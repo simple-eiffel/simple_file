@@ -248,34 +248,38 @@ feature -- Path Transformation
 	normalize: STRING_32
 			-- Normalize path (remove . and ..) without requiring existence.
 		local
-			l_parts: LIST [READABLE_STRING_32]
+			l_parts: LIST [IMMUTABLE_STRING_32]
 			l_result: ARRAYED_LIST [STRING_32]
 			l_sep: CHARACTER_32
+			l_part: IMMUTABLE_STRING_32
 		do
 			l_sep := {OPERATING_ENVIRONMENT}.directory_separator
 			l_parts := internal_path.name.split (l_sep)
 			create l_result.make (l_parts.count)
-			across l_parts as p loop
-				if p.item.same_string (".") then
+			from l_parts.start until l_parts.after loop
+				l_part := l_parts.item
+				if l_part.same_string (".") then
 					-- Skip current dir
-				elseif p.item.same_string ("..") then
+				elseif l_part.same_string ("..") then
 					if not l_result.is_empty and then not l_result.last.same_string ("..") then
 						l_result.finish
 						l_result.remove
 					else
 						l_result.extend ({STRING_32} "..")
 					end
-				elseif not p.item.is_empty then
-					l_result.extend (p.item.to_string_32)
+				elseif not l_part.is_empty then
+					l_result.extend (l_part.twin)
 				end
+				l_parts.forth
 			end
 
 			create Result.make_empty
-			across l_result as r loop
+			from l_result.start until l_result.after loop
 				if not Result.is_empty then
 					Result.append_character (l_sep)
 				end
-				Result.append (r.item)
+				Result.append (l_result.item)
+				l_result.forth
 			end
 		end
 
