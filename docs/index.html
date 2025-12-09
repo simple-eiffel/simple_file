@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_file - RFC 4648 Base64 Encoding for Eiffel</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">RFC 4648 Compliant Base64 Encoding for Eiffel</p>
+        <div class="badges">
+            <span class="badge badge-rfc">RFC 4648</span>
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="api/simple_file.html">API Reference</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>
+                <strong>simple_file</strong> is a lightweight, RFC 4648 compliant Base64 encoding
+                and decoding library for Eiffel. It provides both standard Base64 and URL-safe
+                Base64URL encoding variants, with full Design by Contract support.
+            </p>
+            <p>
+                Part of the <strong>simple_*</strong> ecosystem of focused, single-purpose Eiffel libraries.
+            </p>
+        </section>
+
+        <section id="quick-start">
+            <h2>Quick Start</h2>
+
+            <div class="quick-start">
+                <h3>Installation</h3>
+                <p>Add to your ECF file:</p>
+<pre><code>&lt;library name="simple_file" location="$SIMPLE_file/simple_file.ecf"/&gt;</code></pre>
+                <p>Set environment variable:</p>
+<pre><code>set SIMPLE_file=D:\path\to\simple_file</code></pre>
+            </div>
+
+            <h3>Basic Usage</h3>
+<pre><code><span class="keyword">local</span>
+    encoder: <span class="type">SIMPLE_file</span>
+    encoded, decoded: <span class="type">STRING</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> encoder.make
+
+    <span class="comment">-- Encode a string</span>
+    encoded := encoder.encode (<span class="string">"Hello, World!"</span>)
+    <span class="comment">-- Result: "SGVsbG8sIFdvcmxkIQ=="</span>
+
+    <span class="comment">-- Decode back</span>
+    decoded := encoder.decode (encoded)
+    <span class="comment">-- Result: "Hello, World!"</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>URL-Safe Encoding</h3>
+<pre><code><span class="comment">-- URL-safe variant (no padding, uses - and _ instead of + and /)</span>
+url_safe := encoder.encode_url (<span class="string">"data with special chars"</span>)
+
+<span class="comment">-- Decode URL-safe</span>
+decoded := encoder.decode_url (url_safe)</code></pre>
+
+            <h3>MIME Encoding (RFC 2045)</h3>
+<pre><code><span class="comment">-- MIME encoding with line wrapping at 76 characters</span>
+mime_encoded := encoder.encode_mime (long_content)
+
+<span class="comment">-- Lenient decode handles whitespace and line breaks</span>
+decoded := encoder.decode_lenient (mime_encoded)</code></pre>
+
+            <h3>Data URIs (RFC 2397)</h3>
+<pre><code><span class="comment">-- Create a data URI</span>
+uri := encoder.to_data_uri (<span class="string">"Hello!"</span>, <span class="string">"text/plain"</span>)
+<span class="comment">-- Result: "data:text/plain;base64,SGVsbG8h"</span>
+
+<span class="comment">-- Extract data from a data URI</span>
+data := encoder.from_data_uri (uri)
+<span class="comment">-- Result: "Hello!"</span>
+
+<span class="comment">-- Extract the mediatype</span>
+mediatype := encoder.data_uri_mediatype (uri)
+<span class="comment">-- Result: "text/plain"</span></code></pre>
+        </section>
+
+        <section id="features">
+            <h2>Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Standard Base64</h4>
+                    <p>RFC 4648 compliant encoding with proper padding using the standard alphabet (A-Z, a-z, 0-9, +, /).</p>
+                </div>
+                <div class="feature-card">
+                    <h4>URL-Safe Base64URL</h4>
+                    <p>URL and filename safe variant using - and _ characters. Perfect for JWTs, URLs, and filenames.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Validation</h4>
+                    <p>Built-in validation functions to check if strings are valid Base64 or Base64URL encoded.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Design by Contract</h4>
+                    <p>Full preconditions, postconditions, and loop variants for correctness verification.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Byte-Level Access</h4>
+                    <p>Direct byte array encoding/decoding for binary data handling.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Format Conversion</h4>
+                    <p>Convert between standard and URL-safe formats with <code>to_url_safe</code> and <code>to_standard</code>.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>MIME Encoding</h4>
+                    <p>RFC 2045 compliant encoding with line wrapping at 76 characters. Lenient decoder handles whitespace.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Data URI Support</h4>
+                    <p>RFC 2397 data URIs for embedding data inline. Create, parse, and extract mediatypes.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="api-summary">
+            <h2>API Summary</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>encode (a_input)</code></td>
+                        <td>Encode string to standard Base64</td>
+                    </tr>
+                    <tr>
+                        <td><code>encode_url (a_input)</code></td>
+                        <td>Encode to URL-safe Base64URL (no padding)</td>
+                    </tr>
+                    <tr>
+                        <td><code>encode_bytes (a_bytes)</code></td>
+                        <td>Encode byte array to Base64</td>
+                    </tr>
+                    <tr>
+                        <td><code>decode (a_input)</code></td>
+                        <td>Decode Base64 string</td>
+                    </tr>
+                    <tr>
+                        <td><code>decode_bytes (a_input)</code></td>
+                        <td>Decode to byte array</td>
+                    </tr>
+                    <tr>
+                        <td><code>is_valid_base64 (a_string)</code></td>
+                        <td>Validate standard Base64</td>
+                    </tr>
+                    <tr>
+                        <td><code>is_valid_base64_url (a_string)</code></td>
+                        <td>Validate URL-safe Base64URL</td>
+                    </tr>
+                    <tr>
+                        <td><code>to_url_safe (a_base64)</code></td>
+                        <td>Convert standard to URL-safe format</td>
+                    </tr>
+                    <tr>
+                        <td><code>to_standard (a_base64url)</code></td>
+                        <td>Convert URL-safe to standard format</td>
+                    </tr>
+                    <tr>
+                        <td><code>encode_mime (a_input)</code></td>
+                        <td>Encode with MIME line wrapping (76 chars)</td>
+                    </tr>
+                    <tr>
+                        <td><code>decode_lenient (a_input)</code></td>
+                        <td>Decode ignoring whitespace/line breaks</td>
+                    </tr>
+                    <tr>
+                        <td><code>to_data_uri (a_data, a_mediatype)</code></td>
+                        <td>Create data URI from content</td>
+                    </tr>
+                    <tr>
+                        <td><code>from_data_uri (a_uri)</code></td>
+                        <td>Extract and decode data from data URI</td>
+                    </tr>
+                    <tr>
+                        <td><code>data_uri_mediatype (a_uri)</code></td>
+                        <td>Extract mediatype from data URI</td>
+                    </tr>
+                    <tr>
+                        <td><code>is_data_uri (a_input)</code></td>
+                        <td>Check if string is a data URI</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><a href="api/simple_file.html">View complete API reference &rarr;</a></p>
+        </section>
+
+        <section id="testing">
+            <h2>Testing</h2>
+            <p>
+                The library includes a comprehensive test suite with <strong>44 tests</strong> covering:
+            </p>
+            <ul>
+                <li>Standard RFC 4648 test vectors</li>
+                <li>Empty string handling</li>
+                <li>Single, two, and three character inputs (padding edge cases)</li>
+                <li>URL-safe encoding/decoding</li>
+                <li>Roundtrip encoding for ASCII and binary data</li>
+                <li>Validation of valid and invalid inputs</li>
+                <li>MIME encoding with line wrapping</li>
+                <li>Lenient decoding with whitespace handling</li>
+                <li>Data URI creation, parsing, and roundtrip</li>
+            </ul>
+<pre><code><span class="comment">-- Run tests</span>
+ec.exe -batch -config simple_file.ecf -target simple_file_tests -tests</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>
+            <strong>simple_file</strong> is part of the
+            <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem
+        </p>
+        <p class="copyright">
+            Copyright &copy; 2024-2025 Larry Rix. MIT License.
+        </p>
+    </footer>
+</body>
+</html>
