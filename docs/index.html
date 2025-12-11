@@ -3,22 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>simple_file - Documentation</title>
+    <title>simple_file - File Operations for Eiffel</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/png" href="images/logo.png">
 </head>
 <body>
     <header>
         <div class="logo-container">
-            <img src="images/logo.png" alt="simple_* logo" class="logo">
+            <img src="https://raw.githubusercontent.com/simple-eiffel/claude_eiffel_op_docs/main/artwork/LOGO.png" alt="simple_* logo" class="logo">
         </div>
         <h1>simple_file</h1>
-        <p class="tagline">Simple file and directory operations for Eiffel</p>
+        <p class="tagline">Simple File and Directory Operations for Eiffel</p>
+        <div class="badges">
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+        </div>
     </header>
 
     <nav>
         <ul>
-            <li><a href="index.html" class="active">Overview</a></li>
+            <li><a href="#overview">Overview</a></li>
             <li><a href="user-guide.html">User Guide</a></li>
             <li><a href="api-reference.html">API Reference</a></li>
             <li><a href="architecture.html">Architecture</a></li>
@@ -30,26 +33,14 @@
     <main>
         <section id="overview">
             <h2>Overview</h2>
-            <p>simple_file provides a clean, intuitive API for file and directory operations in Eiffel. It wraps the standard Eiffel file classes with a simpler interface and better error handling.</p>
-
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h3>File Operations</h3>
-                    <p>Read, write, copy, move, delete files with simple one-line operations.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Directory Management</h3>
-                    <p>List, create, and delete directories. Find files by pattern.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Streaming Support</h3>
-                    <p>Memory-efficient processing of large files via chunked reading.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Path Utilities</h3>
-                    <p>Cross-platform path manipulation and normalization.</p>
-                </div>
-            </div>
+            <p>
+                <strong>simple_file</strong> provides a clean, intuitive API for file and directory
+                operations in Eiffel. It wraps the standard Eiffel file classes with a simpler
+                interface and better error handling.
+            </p>
+            <p>
+                Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem.
+            </p>
         </section>
 
         <section id="quick-start">
@@ -85,6 +76,29 @@
         <section id="features">
             <h2>Key Features</h2>
 
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>File Operations</h3>
+                    <p>Read, write, copy, move, delete files with simple one-line operations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Directory Management</h3>
+                    <p>List, create, and delete directories. Find files by pattern.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Streaming Support</h3>
+                    <p>Memory-efficient processing of large files via chunked reading.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Path Utilities</h3>
+                    <p>Cross-platform path manipulation and normalization.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="api-summary">
+            <h2>API Summary</h2>
+
             <h3>File Status</h3>
             <ul>
                 <li><code>exists</code> - Does file/directory exist?</li>
@@ -97,7 +111,6 @@
                 <li><code>size</code> - File size in bytes</li>
                 <li><code>modified_timestamp</code>, <code>accessed_timestamp</code> - Timestamps</li>
                 <li><code>extension</code>, <code>base_name</code>, <code>file_name</code> - Name parts</li>
-                <li><code>parent_path</code>, <code>path_string</code> - Path information</li>
             </ul>
 
             <h3>Read Operations</h3>
@@ -113,7 +126,6 @@
                 <li><code>write_text</code> - Write text (overwrites)</li>
                 <li><code>append_text</code> - Append to existing</li>
                 <li><code>write_lines</code>, <code>append_lines</code> - Line-based writing</li>
-                <li><code>write_bytes</code> - Binary writing</li>
             </ul>
 
             <h3>File Management</h3>
@@ -122,13 +134,6 @@
                 <li><code>move_to</code> - Move to destination</li>
                 <li><code>rename_to</code> - Rename in place</li>
                 <li><code>delete</code> - Delete file</li>
-            </ul>
-
-            <h3>Directory Operations</h3>
-            <ul>
-                <li><code>list_directory</code> - List contents</li>
-                <li><code>create_directory</code>, <code>create_directory_recursive</code></li>
-                <li><code>delete_directory</code>, <code>delete_directory_recursive</code></li>
             </ul>
         </section>
 
@@ -157,11 +162,11 @@
 
         <section id="documentation">
             <h2>Documentation</h2>
-            <ul>
-                <li><a href="user-guide.html">User Guide</a> - Complete tutorial with examples</li>
-                <li><a href="api-reference.html">API Reference</a> - Full API documentation</li>
-                <li><a href="architecture.html">Architecture</a> - Internal design and patterns</li>
-                <li><a href="cookbook.html">Cookbook</a> - Ready-to-use recipes</li>
+            <ul class="doc-links">
+                <li><a href="user-guide.html"><strong>User Guide</strong></a> - Complete tutorial with examples</li>
+                <li><a href="api-reference.html"><strong>API Reference</strong></a> - Full API documentation</li>
+                <li><a href="architecture.html"><strong>Architecture</strong></a> - Internal design and patterns</li>
+                <li><a href="cookbook.html"><strong>Cookbook</strong></a> - Ready-to-use recipes</li>
             </ul>
         </section>
 
@@ -185,32 +190,14 @@
     f.close
 <span class="keyword">end</span></code></pre>
         </section>
-
-        <section id="batch">
-            <h2>Example: Batch File Operations</h2>
-<pre><code><span class="keyword">local</span>
-    files: <span class="type">SIMPLE_FILES</span>
-    matches: ARRAYED_LIST [<span class="type">SIMPLE_FILE</span>]
-<span class="keyword">do</span>
-    <span class="keyword">create</span> files.make (<span class="string">"/project/src"</span>)
-
-    <span class="comment">-- Find all Eiffel files</span>
-    matches := files.find_by_extension (<span class="string">"e"</span>)
-
-    <span class="comment">-- Find recursively</span>
-    matches := files.find_recursive (<span class="string">"*.e"</span>)
-
-    <span class="comment">-- Process each file</span>
-    <span class="keyword">across</span> matches <span class="keyword">as</span> f <span class="keyword">loop</span>
-        print (f.path_string + <span class="string">": "</span> + f.size.out + <span class="string">" bytes%N"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></code></pre>
-        </section>
     </main>
 
     <footer>
-        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
-        <p>&copy; 2025 Larry Rix. MIT License.</p>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_file">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
     </footer>
 </body>
 </html>
