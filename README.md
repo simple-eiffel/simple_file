@@ -1,120 +1,59 @@
-# SIMPLE_FILE
+<p align="center">
+  <img src="https://raw.githubusercontent.com/simple-eiffel/claude_eiffel_op_docs/main/artwork/LOGO.png" alt="simple_ library logo" width="400">
+</p>
 
-Simple file and directory operations wrapper for Eiffel applications.
+# simple_file
 
-## Features
+**[Documentation](https://simple-eiffel.github.io/simple_file/)** | **[GitHub](https://github.com/simple-eiffel/simple_file)**
 
-- File status checking (exists, readable, writable, executable)
-- File metadata (size, timestamps, extension)
-- Read operations (text, bytes, lines)
-- Write operations (text, bytes, lines, append)
-- File operations (copy, move, rename, delete)
-- Directory operations (list, create, delete)
-- Streaming for large files
-- Path transformation utilities
-- Error handling with descriptive messages
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Eiffel](https://img.shields.io/badge/Eiffel-25.02-blue.svg)](https://www.eiffel.org/)
+[![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
 
-## Installation
+Simple file and directory operations for Eiffel applications.
 
-Add to your ECF file:
+Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
-```xml
-<library name="simple_file" location="$SIMPLE_FILE/simple_file.ecf"/>
-```
+## Status
 
-Set the environment variable:
-```
-SIMPLE_FILE=/path/to/simple_file
-```
+**Production**
 
-## Quick Start
+## Overview
+
+SIMPLE_FILE wraps standard Eiffel file classes with a simpler interface and better error handling. Read, write, copy, move files with one-line operations.
 
 ```eiffel
 local
     f: SIMPLE_FILE
-    content: STRING_32
 do
     create f.make ("config.json")
-
-    -- Check if file exists
     if f.exists then
-        -- Read entire file
-        content := f.read_text
-
-        -- Get file info
+        print (f.read_text)
         print ("Size: " + f.size.out + " bytes%N")
-        print ("Extension: " + f.extension + "%N")
-    end
-
-    -- Write to a file
-    create f.make ("output.txt")
-    if f.write_text ("Hello, World!") then
-        print ("File written successfully%N")
     end
 end
 ```
 
-## API Overview
+## Features
 
-### File Status
-| Feature | Description |
-|---------|-------------|
-| `exists` | Does file/directory exist? |
-| `is_readable` | Can file be read? |
-| `is_writable` | Can file be written? |
-| `is_directory` | Is this a directory? |
-| `is_file` | Is this a regular file? |
+- **File Operations** - Read, write, copy, move, delete
+- **Directory Management** - List, create, delete directories
+- **Streaming Support** - Memory-efficient large file processing
+- **Path Utilities** - Cross-platform path manipulation
+- **File Metadata** - Size, timestamps, extension, permissions
 
-### File Metadata
-| Feature | Description |
-|---------|-------------|
-| `size` | Size in bytes |
-| `extension` | File extension |
-| `base_name` | Name without extension |
-| `file_name` | Full file name |
-| `parent_path` | Parent directory |
+## Installation
 
-### Read Operations
-| Feature | Description |
-|---------|-------------|
-| `read_text` | Read entire file as text |
-| `read_bytes` | Read as byte array |
-| `read_lines` | Read all lines |
-| `each_line` | Stream lines (memory efficient) |
+1. Set environment variable:
+```bash
+export SIMPLE_FILE=/path/to/simple_file
+```
 
-### Write Operations
-| Feature | Description |
-|---------|-------------|
-| `write_text` | Write text (overwrites) |
-| `write_bytes` | Write bytes |
-| `append_text` | Append text |
-| `append_line` | Append line with newline |
-
-### File Operations
-| Feature | Description |
-|---------|-------------|
-| `copy_to` | Copy file |
-| `move_to` | Move file |
-| `rename_to` | Rename file |
-| `delete` | Delete file |
-
-### Directory Operations
-| Feature | Description |
-|---------|-------------|
-| `entries` | All entries in directory |
-| `files` | Only files |
-| `directories` | Only subdirectories |
-| `create_directory` | Create directory |
-| `delete_directory_recursive` | Delete with contents |
-
-## Documentation
-
-- [API Documentation](https://simple-eiffel.github.io/simple_file/)
+2. Add to ECF:
+```xml
+<library name="simple_file" location="$SIMPLE_FILE/simple_file.ecf"/>
+```
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Author
-
-Larry Rix
+MIT License
