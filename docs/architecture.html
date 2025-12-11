@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - simple_file</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">Architecture</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html" class="active">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Architecture Overview</h2>
+            <p>simple_file provides a simplified, void-safe wrapper around Eiffel's standard library file classes. It follows the <strong>Facade Pattern</strong> to present a clean, intuitive API while hiding the complexity of the underlying FILE, DIRECTORY, and PATH classes.</p>
+
+            <div class="architecture-diagram">
+<pre>
++------------------+     +------------------+     +------------------+
+|   SIMPLE_FILE    |     |   SIMPLE_FILES   |     |   SIMPLE_PATH    |
+|   (Facade)       |     |   (Collection)   |     |   (Utility)      |
++------------------+     +------------------+     +------------------+
+| - path: PATH     |     | - directory: STR |     | - path: PATH     |
+| - file_info      |     | - pattern: STR   |     +------------------+
++------------------+     +------------------+     | + joined()       |
+| + exists         |     | + find_by_ext()  |     | + parent         |
+| + read_text      |     | + find_pattern() |     | + normalized     |
+| + write_text     |     | + find_recursive |     | + is_absolute    |
+| + copy_to        |     | + all_files      |     +------------------+
+| + delete         |     +------------------+
++------------------+
+        |                        |
+        v                        v
++------------------+     +------------------+
+| RAW_FILE         |     | DIRECTORY        |
+| PLAIN_TEXT_FILE  |     | (ISE stdlib)     |
+| (ISE stdlib)     |     +------------------+
++------------------+
+</pre>
+            </div>
+        </section>
+
+        <section id="design-patterns">
+            <h2>Design Patterns</h2>
+
+            <h3>Facade Pattern</h3>
+            <p>SIMPLE_FILE acts as a facade over multiple ISE classes:</p>
+            <ul>
+                <li><strong>FILE_INFO</strong> - For metadata (size, timestamps, permissions)</li>
+                <li><strong>RAW_FILE</strong> - For binary read/write operations</li>
+                <li><strong>PLAIN_TEXT_FILE</strong> - For text read/write operations</li>
+                <li><strong>DIRECTORY</strong> - For directory operations</li>
+                <li><strong>PATH</strong> - For path manipulation</li>
+            </ul>
+
+<pre><code><span class="keyword">class</span> <span class="type">SIMPLE_FILE</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Internal</span>
+
+    internal_path: PATH
+        <span class="comment">-- Underlying PATH object</span>
+
+    file_info: FILE_INFO
+        <span class="comment">-- Cached file metadata</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Status</span>
+
+    exists: BOOLEAN
+        <span class="comment">-- Delegates to FILE_INFO</span>
+        <span class="keyword">do</span>
+            Result := file_info.exists
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Reading</span>
+
+    read_text: STRING_32
+        <span class="comment">-- Uses PLAIN_TEXT_FILE internally</span>
+        <span class="keyword">local</span>
+            l_file: PLAIN_TEXT_FILE
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> l_file.make_with_path (internal_path)
+            l_file.open_read
+            <span class="comment">-- ... read and close</span>
+        <span class="keyword">end</span>
+</code></pre>
+
+            <h3>Wrapper Pattern</h3>
+            <p>Each operation wraps ISE library calls with:</p>
+            <ul>
+                <li>Precondition validation</li>
+                <li>Error handling and capture</li>
+                <li>Resource cleanup (file closing)</li>
+                <li>Type conversion (STRING_8 to STRING_32)</li>
+            </ul>
+
+<pre><code>write_text (a_content: STRING_32)
+        <span class="comment">-- Write with error handling</span>
+    <span class="keyword">require</span>
+        content_attached: a_content /= <span class="keyword">Void</span>
+    <span class="keyword">local</span>
+        l_file: PLAIN_TEXT_FILE
+    <span class="keyword">do</span>
+        clear_error
+        <span class="keyword">create</span> l_file.make_with_path (internal_path)
+        <span class="keyword">if</span> l_file.is_creatable <span class="keyword">or</span> l_file.is_writable <span class="keyword">then</span>
+            l_file.open_write
+            l_file.put_string (a_content.to_string_8)
+            l_file.close
+        <span class="keyword">else</span>
+            set_error (<span class="string">"Cannot write to file"</span>)
+        <span class="keyword">end</span>
+    <span class="keyword">ensure</span>
+        error_or_written: has_error <span class="keyword">or else</span> exists
+    <span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="class-responsibilities">
+            <h2>Class Responsibilities</h2>
+
+            <h3>SIMPLE_FILE</h3>
+            <p>Primary facade for single file/directory operations:</p>
+            <table class="api-table">
+                <tr>
+                    <th>Responsibility</th>
+                    <th>Features</th>
+                </tr>
+                <tr>
+                    <td>Status queries</td>
+                    <td>exists, is_file, is_directory, is_readable, is_writable</td>
+                </tr>
+                <tr>
+                    <td>Metadata access</td>
+                    <td>size, modified_timestamp, extension, base_name</td>
+                </tr>
+                <tr>
+                    <td>Content operations</td>
+                    <td>read_text, write_text, read_bytes, write_bytes</td>
+                </tr>
+                <tr>
+                    <td>File management</td>
+                    <td>copy_to, move_to, rename_to, delete</td>
+                </tr>
+                <tr>
+                    <td>Directory operations</td>
+                    <td>list_directory, create_directory, delete_directory</td>
+                </tr>
+                <tr>
+                    <td>Error handling</td>
+                    <td>has_error, last_error, clear_error</td>
+                </tr>
+            </table>
+
+            <h3>SIMPLE_FILES</h3>
+            <p>Batch operations and pattern matching:</p>
+            <table class="api-table">
+                <tr>
+                    <th>Responsibility</th>
+                    <th>Features</th>
+                </tr>
+                <tr>
+                    <td>Pattern matching</td>
+                    <td>find_by_extension, find_by_pattern</td>
+                </tr>
+                <tr>
+                    <td>Recursive search</td>
+                    <td>find_recursive</td>
+                </tr>
+                <tr>
+                    <td>Collection queries</td>
+                    <td>all_files, all_directories</td>
+                </tr>
+            </table>
+
+            <h3>SIMPLE_PATH</h3>
+            <p>Path manipulation utilities:</p>
+            <table class="api-table">
+                <tr>
+                    <th>Responsibility</th>
+                    <th>Features</th>
+                </tr>
+                <tr>
+                    <td>Path construction</td>
+                    <td>joined, parent</td>
+                </tr>
+                <tr>
+                    <td>Path queries</td>
+                    <td>is_absolute, is_relative, extension</td>
+                </tr>
+                <tr>
+                    <td>Normalization</td>
+                    <td>normalized (resolves . and ..)</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling Strategy</h2>
+
+            <p>simple_file uses a <strong>Result-Based Error Model</strong> rather than exceptions:</p>
+
+            <h3>Error State Pattern</h3>
+<pre><code><span class="keyword">feature</span> <span class="comment">-- Error state</span>
+
+    has_error: BOOLEAN
+        <span class="comment">-- Did last operation fail?</span>
+
+    last_error: STRING_32
+        <span class="comment">-- Error message (empty if no error)</span>
+
+    clear_error
+        <span class="comment">-- Reset error state</span>
+        <span class="keyword">do</span>
+            has_error := False
+            last_error := <span class="string">""</span>
+        <span class="keyword">ensure</span>
+            no_error: <span class="keyword">not</span> has_error
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Error setting</span>
+
+    set_error (a_message: STRING_32)
+        <span class="comment">-- Record error</span>
+        <span class="keyword">do</span>
+            has_error := True
+            last_error := a_message
+        <span class="keyword">ensure</span>
+            error_set: has_error
+            message_set: last_error = a_message
+        <span class="keyword">end</span></code></pre>
+
+            <h3>Usage Pattern</h3>
+<pre><code><span class="comment">-- Clear before operation (optional)</span>
+f.clear_error
+
+<span class="comment">-- Perform operation</span>
+f.write_text (<span class="string">"content"</span>)
+
+<span class="comment">-- Check result</span>
+<span class="keyword">if</span> f.has_error <span class="keyword">then</span>
+    print (<span class="string">"Failed: "</span> + f.last_error)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Error Categories</h3>
+            <ul>
+                <li><strong>Existence errors</strong>: "File does not exist", "Directory does not exist"</li>
+                <li><strong>Permission errors</strong>: "Cannot read file", "Cannot write to file"</li>
+                <li><strong>Operation errors</strong>: "Cannot copy file", "Cannot delete directory"</li>
+                <li><strong>Resource errors</strong>: "File is open", "Disk full"</li>
+            </ul>
+        </section>
+
+        <section id="streaming">
+            <h2>Streaming Architecture</h2>
+
+            <p>For large files, simple_file provides streaming operations that process data in chunks:</p>
+
+<pre><code><span class="keyword">feature</span> <span class="comment">-- Streaming</span>
+
+    open_read
+        <span class="comment">-- Open file for streaming read</span>
+        <span class="keyword">require</span>
+            exists: exists
+            not_open: <span class="keyword">not</span> is_open
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> internal_file.make_with_path (internal_path)
+            internal_file.open_read
+            is_open := True
+        <span class="keyword">ensure</span>
+            open: is_open
+        <span class="keyword">end</span>
+
+    read_chunk (a_size: INTEGER): STRING_32
+        <span class="comment">-- Read up to a_size bytes</span>
+        <span class="keyword">require</span>
+            open: is_open
+            positive_size: a_size > 0
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (a_size)
+            internal_file.read_stream (a_size)
+            Result := internal_file.last_string.to_string_32
+        <span class="keyword">end</span>
+
+    end_of_file: BOOLEAN
+        <span class="comment">-- At end of file?</span>
+        <span class="keyword">require</span>
+            open: is_open
+        <span class="keyword">do</span>
+            Result := internal_file.end_of_file
+        <span class="keyword">end</span>
+
+    close
+        <span class="comment">-- Close open file</span>
+        <span class="keyword">require</span>
+            open: is_open
+        <span class="keyword">do</span>
+            internal_file.close
+            is_open := False
+        <span class="keyword">ensure</span>
+            closed: <span class="keyword">not</span> is_open
+        <span class="keyword">end</span></code></pre>
+
+            <h3>Memory Efficiency</h3>
+            <p>Streaming allows processing files larger than available memory:</p>
+            <ul>
+                <li><code>read_text</code> - Loads entire file into memory (simple but memory-intensive)</li>
+                <li><code>read_chunk</code> - Loads fixed-size chunks (constant memory usage)</li>
+                <li>Line-by-line iteration via cursor pattern</li>
+            </ul>
+        </section>
+
+        <section id="scoop">
+            <h2>SCOOP Compatibility</h2>
+
+            <p>simple_file is designed for SCOOP (Simple Concurrent Object-Oriented Programming):</p>
+
+            <h3>Thread-Safe Design</h3>
+            <ul>
+                <li>No global state or shared mutable variables</li>
+                <li>Each SIMPLE_FILE instance operates independently</li>
+                <li>File handles are instance-specific</li>
+                <li>Error state is per-instance</li>
+            </ul>
+
+            <h3>Concurrent Usage</h3>
+<pre><code><span class="keyword">local</span>
+    reader: <span class="keyword">separate</span> <span class="type">SIMPLE_FILE</span>
+    writer: <span class="keyword">separate</span> <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="comment">-- Different files can be accessed concurrently</span>
+    <span class="keyword">create</span> reader.make (<span class="string">"input.txt"</span>)
+    <span class="keyword">create</span> writer.make (<span class="string">"output.txt"</span>)
+
+    <span class="comment">-- Separate calls for concurrent access</span>
+    process_files (reader, writer)
+<span class="keyword">end</span>
+
+process_files (a_reader: <span class="keyword">separate</span> <span class="type">SIMPLE_FILE</span>; a_writer: <span class="keyword">separate</span> <span class="type">SIMPLE_FILE</span>)
+    <span class="keyword">do</span>
+        <span class="comment">-- Each file accessed through separate handler</span>
+        a_writer.write_text (a_reader.read_text)
+    <span class="keyword">end</span></code></pre>
+
+            <h3>Atomic Operations</h3>
+            <p>Single method calls are atomic with respect to SCOOP. Complex operations should be wrapped in separate handlers.</p>
+        </section>
+
+        <section id="contracts">
+            <h2>Design by Contract</h2>
+
+            <p>All public features have complete contracts:</p>
+
+            <h3>Preconditions</h3>
+<pre><code>read_text: STRING_32
+    <span class="keyword">require</span>
+        exists: exists
+        is_file: is_file
+        is_readable: is_readable
+
+copy_to (a_destination: STRING_32)
+    <span class="keyword">require</span>
+        destination_not_empty: <span class="keyword">not</span> a_destination.is_empty
+        source_exists: exists
+
+delete_directory_recursive
+    <span class="keyword">require</span>
+        is_directory: is_directory</code></pre>
+
+            <h3>Postconditions</h3>
+<pre><code>write_text (a_content: STRING_32)
+    <span class="keyword">ensure</span>
+        file_exists: exists
+        error_or_content: has_error <span class="keyword">or else</span> read_text.same_string (a_content)
+
+delete
+    <span class="keyword">ensure</span>
+        removed: <span class="keyword">not</span> exists
+
+create_directory
+    <span class="keyword">ensure</span>
+        created: exists <span class="keyword">and</span> is_directory</code></pre>
+
+            <h3>Class Invariant</h3>
+<pre><code><span class="keyword">invariant</span>
+    path_exists: internal_path /= <span class="keyword">Void</span>
+    consistent_open_state: is_open <span class="keyword">implies</span> internal_file /= <span class="keyword">Void</span>
+    error_message_consistency: has_error <span class="keyword">implies</span> <span class="keyword">not</span> last_error.is_empty</code></pre>
+        </section>
+
+        <section id="platform">
+            <h2>Platform Considerations</h2>
+
+            <h3>Path Separators</h3>
+            <p>The library handles path separators automatically via Eiffel's PATH class:</p>
+            <ul>
+                <li>Windows: backslash (\)</li>
+                <li>Unix/Linux/macOS: forward slash (/)</li>
+                <li>SIMPLE_PATH.joined handles platform-specific joining</li>
+            </ul>
+
+            <h3>Character Encoding</h3>
+            <ul>
+                <li>Paths: STRING_32 (Unicode support)</li>
+                <li>Content: STRING_32 for text, ARRAY [NATURAL_8] for binary</li>
+                <li>Internal conversion to STRING_8 for ISE library compatibility</li>
+            </ul>
+
+            <h3>File Locking</h3>
+            <p>File locking behavior follows the underlying OS:</p>
+            <ul>
+                <li>Windows: Exclusive locks during write</li>
+                <li>Unix: Advisory locks only</li>
+                <li>Always close files after operations</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
+        <p>&copy; 2025 Larry Rix. MIT License.</p>
+    </footer>
+</body>
+</html>

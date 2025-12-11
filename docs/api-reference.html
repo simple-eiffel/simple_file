@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - simple_file</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">API Reference</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html" class="active">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="simple-file">
+            <h2>SIMPLE_FILE</h2>
+            <p>Main class for file and directory operations.</p>
+
+            <h3>Creation</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>make</code></td>
+                    <td><code>(a_path: READABLE_STRING_GENERAL)</code></td>
+                    <td>Create from string path.</td>
+                </tr>
+                <tr>
+                    <td><code>make_with_path</code></td>
+                    <td><code>(a_path: PATH)</code></td>
+                    <td>Create from PATH object.</td>
+                </tr>
+            </table>
+
+            <h3>File Status</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>exists</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Does file or directory exist?</td>
+                </tr>
+                <tr>
+                    <td><code>is_readable</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Can file be read?</td>
+                </tr>
+                <tr>
+                    <td><code>is_writable</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Can file be written?</td>
+                </tr>
+                <tr>
+                    <td><code>is_executable</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Can file be executed?</td>
+                </tr>
+                <tr>
+                    <td><code>is_directory</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is this a directory?</td>
+                </tr>
+                <tr>
+                    <td><code>is_file</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is this a regular file?</td>
+                </tr>
+                <tr>
+                    <td><code>is_symlink</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is this a symbolic link?</td>
+                </tr>
+            </table>
+
+            <h3>File Metadata</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>size</code></td>
+                    <td><code>: INTEGER_64</code></td>
+                    <td>File size in bytes.</td>
+                </tr>
+                <tr>
+                    <td><code>modified_timestamp</code></td>
+                    <td><code>: INTEGER</code></td>
+                    <td>Modification time (epoch seconds).</td>
+                </tr>
+                <tr>
+                    <td><code>accessed_timestamp</code></td>
+                    <td><code>: INTEGER</code></td>
+                    <td>Access time (epoch seconds).</td>
+                </tr>
+                <tr>
+                    <td><code>extension</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>File extension without dot.</td>
+                </tr>
+                <tr>
+                    <td><code>base_name</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Filename without extension.</td>
+                </tr>
+                <tr>
+                    <td><code>file_name</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Full filename with extension.</td>
+                </tr>
+                <tr>
+                    <td><code>parent_path</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Parent directory path.</td>
+                </tr>
+                <tr>
+                    <td><code>path</code></td>
+                    <td><code>: PATH</code></td>
+                    <td>Full PATH object.</td>
+                </tr>
+                <tr>
+                    <td><code>path_string</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Full path as string.</td>
+                </tr>
+            </table>
+
+            <h3>Read Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>read_text</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Read entire file as text.</td>
+                </tr>
+                <tr>
+                    <td><code>read_lines</code></td>
+                    <td><code>: ARRAYED_LIST [STRING_32]</code></td>
+                    <td>Read file as list of lines.</td>
+                </tr>
+                <tr>
+                    <td><code>read_bytes</code></td>
+                    <td><code>: ARRAY [NATURAL_8]</code></td>
+                    <td>Read entire file as bytes.</td>
+                </tr>
+                <tr>
+                    <td><code>open_read</code></td>
+                    <td><code></code></td>
+                    <td>Open file for streaming read.</td>
+                </tr>
+                <tr>
+                    <td><code>read_chunk</code></td>
+                    <td><code>(a_size: INTEGER): STRING_32</code></td>
+                    <td>Read chunk of specified size.</td>
+                </tr>
+                <tr>
+                    <td><code>end_of_file</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is at end of file?</td>
+                </tr>
+                <tr>
+                    <td><code>close</code></td>
+                    <td><code></code></td>
+                    <td>Close open file.</td>
+                </tr>
+            </table>
+
+            <h3>Write Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>write_text</code></td>
+                    <td><code>(a_content: STRING_32)</code></td>
+                    <td>Write text (overwrites existing).</td>
+                </tr>
+                <tr>
+                    <td><code>append_text</code></td>
+                    <td><code>(a_content: STRING_32)</code></td>
+                    <td>Append text to file.</td>
+                </tr>
+                <tr>
+                    <td><code>write_lines</code></td>
+                    <td><code>(a_lines: LIST [STRING_32])</code></td>
+                    <td>Write list of lines.</td>
+                </tr>
+                <tr>
+                    <td><code>append_lines</code></td>
+                    <td><code>(a_lines: LIST [STRING_32])</code></td>
+                    <td>Append list of lines.</td>
+                </tr>
+                <tr>
+                    <td><code>write_bytes</code></td>
+                    <td><code>(a_bytes: ARRAY [NATURAL_8])</code></td>
+                    <td>Write binary data.</td>
+                </tr>
+                <tr>
+                    <td><code>create_empty</code></td>
+                    <td><code></code></td>
+                    <td>Create empty file (touch).</td>
+                </tr>
+            </table>
+
+            <h3>File Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>copy_to</code></td>
+                    <td><code>(a_destination: STRING_32)</code></td>
+                    <td>Copy file to destination.</td>
+                </tr>
+                <tr>
+                    <td><code>move_to</code></td>
+                    <td><code>(a_destination: STRING_32)</code></td>
+                    <td>Move file to destination.</td>
+                </tr>
+                <tr>
+                    <td><code>rename_to</code></td>
+                    <td><code>(a_new_name: STRING_32)</code></td>
+                    <td>Rename file (same directory).</td>
+                </tr>
+                <tr>
+                    <td><code>delete</code></td>
+                    <td><code></code></td>
+                    <td>Delete file.</td>
+                </tr>
+            </table>
+
+            <h3>Directory Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>list_directory</code></td>
+                    <td><code>: ARRAYED_LIST [STRING_32]</code></td>
+                    <td>List directory contents.</td>
+                </tr>
+                <tr>
+                    <td><code>create_directory</code></td>
+                    <td><code></code></td>
+                    <td>Create directory.</td>
+                </tr>
+                <tr>
+                    <td><code>create_directory_recursive</code></td>
+                    <td><code></code></td>
+                    <td>Create nested directories.</td>
+                </tr>
+                <tr>
+                    <td><code>delete_directory</code></td>
+                    <td><code></code></td>
+                    <td>Delete empty directory.</td>
+                </tr>
+                <tr>
+                    <td><code>delete_directory_recursive</code></td>
+                    <td><code></code></td>
+                    <td>Delete directory and contents.</td>
+                </tr>
+            </table>
+
+            <h3>Error Handling</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>has_error</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Did last operation fail?</td>
+                </tr>
+                <tr>
+                    <td><code>last_error</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Error message from last operation.</td>
+                </tr>
+                <tr>
+                    <td><code>clear_error</code></td>
+                    <td><code></code></td>
+                    <td>Clear error state.</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="simple-files">
+            <h2>SIMPLE_FILES</h2>
+            <p>Batch file operations and pattern matching.</p>
+
+            <h3>Creation</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>make</code></td>
+                    <td><code>(a_directory: STRING_32)</code></td>
+                    <td>Create for directory.</td>
+                </tr>
+            </table>
+
+            <h3>Find Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>find_by_extension</code></td>
+                    <td><code>(a_ext: STRING): ARRAYED_LIST [SIMPLE_FILE]</code></td>
+                    <td>Find files by extension.</td>
+                </tr>
+                <tr>
+                    <td><code>find_by_pattern</code></td>
+                    <td><code>(a_pattern: STRING): ARRAYED_LIST [SIMPLE_FILE]</code></td>
+                    <td>Find files by glob pattern.</td>
+                </tr>
+                <tr>
+                    <td><code>find_recursive</code></td>
+                    <td><code>(a_pattern: STRING): ARRAYED_LIST [SIMPLE_FILE]</code></td>
+                    <td>Find files recursively.</td>
+                </tr>
+                <tr>
+                    <td><code>all_files</code></td>
+                    <td><code>: ARRAYED_LIST [SIMPLE_FILE]</code></td>
+                    <td>Get all files in directory.</td>
+                </tr>
+                <tr>
+                    <td><code>all_directories</code></td>
+                    <td><code>: ARRAYED_LIST [SIMPLE_FILE]</code></td>
+                    <td>Get all subdirectories.</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="simple-path">
+            <h2>SIMPLE_PATH</h2>
+            <p>Path manipulation utilities.</p>
+
+            <h3>Creation</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>make</code></td>
+                    <td><code>(a_path: STRING_32)</code></td>
+                    <td>Create from string.</td>
+                </tr>
+                <tr>
+                    <td><code>make_from_path</code></td>
+                    <td><code>(a_path: PATH)</code></td>
+                    <td>Create from PATH.</td>
+                </tr>
+            </table>
+
+            <h3>Path Operations</h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>joined</code></td>
+                    <td><code>(a_component: STRING_32): SIMPLE_PATH</code></td>
+                    <td>Join path component.</td>
+                </tr>
+                <tr>
+                    <td><code>parent</code></td>
+                    <td><code>: SIMPLE_PATH</code></td>
+                    <td>Parent directory path.</td>
+                </tr>
+                <tr>
+                    <td><code>name</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Full path as string.</td>
+                </tr>
+                <tr>
+                    <td><code>file_name</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Just the filename.</td>
+                </tr>
+                <tr>
+                    <td><code>extension</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>File extension.</td>
+                </tr>
+                <tr>
+                    <td><code>is_absolute</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is path absolute?</td>
+                </tr>
+                <tr>
+                    <td><code>is_relative</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Is path relative?</td>
+                </tr>
+                <tr>
+                    <td><code>normalized</code></td>
+                    <td><code>: SIMPLE_PATH</code></td>
+                    <td>Normalized path (resolve . and ..).</td>
+                </tr>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
+        <p>&copy; 2025 Larry Rix. MIT License.</p>
+    </footer>
+</body>
+</html>

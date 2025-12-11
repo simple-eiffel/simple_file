@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookbook - simple_file</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">Cookbook</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html" class="active">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="toc">
+            <h2>Recipes</h2>
+            <ol>
+                <li><a href="#config-file">Configuration File Manager</a></li>
+                <li><a href="#log-analyzer">Log File Analyzer</a></li>
+                <li><a href="#backup-utility">Backup Utility</a></li>
+                <li><a href="#csv-processor">CSV File Processor</a></li>
+                <li><a href="#directory-sync">Directory Synchronizer</a></li>
+                <li><a href="#temp-files">Temporary File Handler</a></li>
+                <li><a href="#file-watcher">File Change Detector</a></li>
+                <li><a href="#batch-rename">Batch File Renamer</a></li>
+                <li><a href="#tree-walker">Directory Tree Walker</a></li>
+                <li><a href="#safe-writer">Atomic File Writer</a></li>
+            </ol>
+        </section>
+
+        <section id="config-file">
+            <h2>1. Configuration File Manager</h2>
+            <p>Read and write INI-style configuration files with sections and key-value pairs.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">CONFIG_FILE_MANAGER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_path: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> file.make (a_path)
+            <span class="keyword">create</span> sections.make (10)
+            <span class="keyword">if</span> file.exists <span class="keyword">then</span>
+                load
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Access</span>
+
+    get (a_section, a_key: STRING_32): detachable STRING_32
+            <span class="comment">-- Get value from section</span>
+        <span class="keyword">do</span>
+            <span class="keyword">if</span> <span class="keyword">attached</span> sections.item (a_section) <span class="keyword">as</span> sec <span class="keyword">then</span>
+                Result := sec.item (a_key)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    get_or_default (a_section, a_key, a_default: STRING_32): STRING_32
+            <span class="comment">-- Get value or return default</span>
+        <span class="keyword">do</span>
+            <span class="keyword">if</span> <span class="keyword">attached</span> get (a_section, a_key) <span class="keyword">as</span> v <span class="keyword">then</span>
+                Result := v
+            <span class="keyword">else</span>
+                Result := a_default
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Modification</span>
+
+    set (a_section, a_key, a_value: STRING_32)
+            <span class="comment">-- Set value in section</span>
+        <span class="keyword">local</span>
+            sec: HASH_TABLE [STRING_32, STRING_32]
+        <span class="keyword">do</span>
+            <span class="keyword">if</span> <span class="keyword">attached</span> sections.item (a_section) <span class="keyword">as</span> s <span class="keyword">then</span>
+                s.force (a_value, a_key)
+            <span class="keyword">else</span>
+                <span class="keyword">create</span> sec.make (10)
+                sec.force (a_value, a_key)
+                sections.force (sec, a_section)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    save
+            <span class="comment">-- Write config to file</span>
+        <span class="keyword">local</span>
+            content: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> content.make (1024)
+            <span class="keyword">across</span> sections <span class="keyword">as</span> sec <span class="keyword">loop</span>
+                content.append (<span class="string">"["</span> + sec.key + <span class="string">"]%N"</span>)
+                <span class="keyword">across</span> sec <span class="keyword">as</span> kv <span class="keyword">loop</span>
+                    content.append (kv.key + <span class="string">"="</span> + kv.item + <span class="string">"%N"</span>)
+                <span class="keyword">end</span>
+                content.append (<span class="string">"%N"</span>)
+            <span class="keyword">end</span>
+            file.write_text (content)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    file: SIMPLE_FILE
+    sections: HASH_TABLE [HASH_TABLE [STRING_32, STRING_32], STRING_32]
+
+    load
+            <span class="comment">-- Parse config file</span>
+        <span class="keyword">local</span>
+            lines: ARRAYED_LIST [STRING_32]
+            current_section: STRING_32
+            parts: LIST [STRING_32]
+        <span class="keyword">do</span>
+            lines := file.read_lines
+            <span class="keyword">create</span> current_section.make_empty
+            <span class="keyword">across</span> lines <span class="keyword">as</span> line <span class="keyword">loop</span>
+                <span class="keyword">if</span> line.starts_with (<span class="string">"["</span>) <span class="keyword">and</span> line.ends_with (<span class="string">"]"</span>) <span class="keyword">then</span>
+                    current_section := line.substring (2, line.count - 1)
+                <span class="keyword">elseif</span> line.has ('=') <span class="keyword">then</span>
+                    parts := line.split ('=')
+                    <span class="keyword">if</span> parts.count >= 2 <span class="keyword">then</span>
+                        set (current_section, parts[1], parts[2])
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    config: CONFIG_FILE_MANAGER
+<span class="keyword">do</span>
+    <span class="keyword">create</span> config.make (<span class="string">"app.ini"</span>)
+
+    <span class="comment">-- Read values</span>
+    <span class="keyword">if</span> <span class="keyword">attached</span> config.get (<span class="string">"database"</span>, <span class="string">"host"</span>) <span class="keyword">as</span> host <span class="keyword">then</span>
+        print (<span class="string">"Database host: "</span> + host)
+    <span class="keyword">end</span>
+
+    <span class="comment">-- Set and save</span>
+    config.set (<span class="string">"database"</span>, <span class="string">"port"</span>, <span class="string">"5432"</span>)
+    config.save
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="log-analyzer">
+            <h2>2. Log File Analyzer</h2>
+            <p>Process large log files efficiently, extracting errors and statistics.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">LOG_ANALYZER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_log_path: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> file.make (a_log_path)
+            <span class="keyword">create</span> errors.make (100)
+            <span class="keyword">create</span> warnings.make (100)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Analysis</span>
+
+    analyze
+            <span class="comment">-- Stream through log and categorize entries</span>
+        <span class="keyword">local</span>
+            chunk: STRING_32
+            lines: LIST [STRING_32]
+        <span class="keyword">do</span>
+            error_count := 0
+            warning_count := 0
+            total_lines := 0
+
+            file.open_read
+            <span class="keyword">from</span>
+            <span class="keyword">until</span>
+                file.end_of_file
+            <span class="keyword">loop</span>
+                chunk := file.read_chunk (65536)  <span class="comment">-- 64KB chunks</span>
+                lines := chunk.split ('%N')
+                <span class="keyword">across</span> lines <span class="keyword">as</span> line <span class="keyword">loop</span>
+                    process_line (line)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            file.close
+        <span class="keyword">end</span>
+
+    errors: ARRAYED_LIST [STRING_32]
+            <span class="comment">-- Collected error lines</span>
+
+    warnings: ARRAYED_LIST [STRING_32]
+            <span class="comment">-- Collected warning lines</span>
+
+    error_count: INTEGER
+    warning_count: INTEGER
+    total_lines: INTEGER
+
+    summary: STRING_32
+        <span class="keyword">do</span>
+            Result := <span class="string">"Total lines: "</span> + total_lines.out + <span class="string">"%N"</span> +
+                      <span class="string">"Errors: "</span> + error_count.out + <span class="string">"%N"</span> +
+                      <span class="string">"Warnings: "</span> + warning_count.out
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    file: SIMPLE_FILE
+
+    process_line (a_line: STRING_32)
+        <span class="keyword">do</span>
+            total_lines := total_lines + 1
+            <span class="keyword">if</span> a_line.has_substring (<span class="string">"ERROR"</span>) <span class="keyword">then</span>
+                error_count := error_count + 1
+                <span class="keyword">if</span> errors.count < 1000 <span class="keyword">then</span>  <span class="comment">-- Cap storage</span>
+                    errors.extend (a_line)
+                <span class="keyword">end</span>
+            <span class="keyword">elseif</span> a_line.has_substring (<span class="string">"WARNING"</span>) <span class="keyword">then</span>
+                warning_count := warning_count + 1
+                <span class="keyword">if</span> warnings.count < 1000 <span class="keyword">then</span>
+                    warnings.extend (a_line)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    analyzer: LOG_ANALYZER
+<span class="keyword">do</span>
+    <span class="keyword">create</span> analyzer.make (<span class="string">"/var/log/app.log"</span>)
+    analyzer.analyze
+
+    print (analyzer.summary)
+
+    <span class="comment">-- Show first 10 errors</span>
+    <span class="keyword">across</span> analyzer.errors.new_cursor.take (10) <span class="keyword">as</span> err <span class="keyword">loop</span>
+        print (err + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="backup-utility">
+            <h2>3. Backup Utility</h2>
+            <p>Create timestamped backups of files with rotation.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">BACKUP_UTILITY</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_backup_dir: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> backup_dir.make (a_backup_dir)
+            max_backups := 5
+            <span class="keyword">if</span> <span class="keyword">not</span> backup_dir.exists <span class="keyword">then</span>
+                backup_dir.create_directory_recursive
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Configuration</span>
+
+    max_backups: INTEGER
+            <span class="comment">-- Maximum backups to keep per file</span>
+
+    set_max_backups (n: INTEGER)
+        <span class="keyword">require</span>
+            positive: n > 0
+        <span class="keyword">do</span>
+            max_backups := n
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Operations</span>
+
+    backup (a_file_path: STRING_32): STRING_32
+            <span class="comment">-- Create backup, return backup path</span>
+        <span class="keyword">local</span>
+            source: SIMPLE_FILE
+            backup_name: STRING_32
+            dest_path: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> source.make (a_file_path)
+            <span class="keyword">if</span> source.exists <span class="keyword">then</span>
+                backup_name := source.base_name + <span class="string">"_"</span> + timestamp +
+                               <span class="string">"."</span> + source.extension
+                dest_path := backup_dir.path_string + <span class="string">"/"</span> + backup_name
+                source.copy_to (dest_path)
+                rotate_backups (source.base_name, source.extension)
+                Result := dest_path
+            <span class="keyword">else</span>
+                Result := <span class="string">""</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    restore_latest (a_original_name: STRING_32): BOOLEAN
+            <span class="comment">-- Restore most recent backup</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+            matches: ARRAYED_LIST [SIMPLE_FILE]
+            latest: detachable SIMPLE_FILE
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> files.make (backup_dir.path_string)
+            matches := files.find_by_pattern (a_original_name + <span class="string">"_*"</span>)
+
+            <span class="comment">-- Find most recent by modification time</span>
+            <span class="keyword">across</span> matches <span class="keyword">as</span> f <span class="keyword">loop</span>
+                <span class="keyword">if</span> latest = <span class="keyword">Void</span> <span class="keyword">or else</span>
+                   f.modified_timestamp > latest.modified_timestamp <span class="keyword">then</span>
+                    latest := f
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+
+            <span class="keyword">if</span> <span class="keyword">attached</span> latest <span class="keyword">then</span>
+                latest.copy_to (a_original_name)
+                Result := True
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    backup_dir: SIMPLE_FILE
+
+    timestamp: STRING_32
+        <span class="keyword">local</span>
+            dt: DATE_TIME
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> dt.make_now
+            Result := dt.formatted_out (<span class="string">"yyyy-mm-dd_hh-mi-ss"</span>)
+        <span class="keyword">end</span>
+
+    rotate_backups (a_base_name, a_extension: STRING_32)
+            <span class="comment">-- Remove old backups exceeding max_backups</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+            matches: ARRAYED_LIST [SIMPLE_FILE]
+            sorted: ARRAYED_LIST [SIMPLE_FILE]
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> files.make (backup_dir.path_string)
+            matches := files.find_by_pattern (a_base_name + <span class="string">"_*."</span> + a_extension)
+
+            <span class="keyword">if</span> matches.count > max_backups <span class="keyword">then</span>
+                <span class="comment">-- Sort by timestamp (oldest first)</span>
+                <span class="keyword">create</span> sorted.make_from_iterable (matches)
+                sort_by_time (sorted)
+
+                <span class="comment">-- Delete oldest until within limit</span>
+                <span class="keyword">from</span>
+                <span class="keyword">until</span>
+                    sorted.count <= max_backups
+                <span class="keyword">loop</span>
+                    sorted.first.delete
+                    sorted.start
+                    sorted.remove
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    sort_by_time (a_list: ARRAYED_LIST [SIMPLE_FILE])
+            <span class="comment">-- Sort files by modification time (oldest first)</span>
+        <span class="keyword">local</span>
+            sorter: QUICK_SORTER [SIMPLE_FILE]
+            comparator: AGENT_BASED_EQUALITY_TESTER [SIMPLE_FILE]
+        <span class="keyword">do</span>
+            <span class="comment">-- Implementation using agent comparator</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="csv-processor">
+            <h2>4. CSV File Processor</h2>
+            <p>Read and write CSV files with proper handling of quoted fields.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">CSV_FILE_PROCESSOR</span>
+
+<span class="keyword">create</span>
+    make, make_with_delimiter
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_path: STRING_32)
+        <span class="keyword">do</span>
+            make_with_delimiter (a_path, ',')
+        <span class="keyword">end</span>
+
+    make_with_delimiter (a_path: STRING_32; a_delimiter: CHARACTER_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> file.make (a_path)
+            delimiter := a_delimiter
+            <span class="keyword">create</span> rows.make (100)
+            <span class="keyword">create</span> headers.make (10)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Access</span>
+
+    headers: ARRAYED_LIST [STRING_32]
+    rows: ARRAYED_LIST [ARRAYED_LIST [STRING_32]]
+    delimiter: CHARACTER_32
+
+<span class="keyword">feature</span> <span class="comment">-- Reading</span>
+
+    load
+            <span class="comment">-- Load CSV into memory</span>
+        <span class="keyword">local</span>
+            lines: ARRAYED_LIST [STRING_32]
+            first: BOOLEAN
+        <span class="keyword">do</span>
+            rows.wipe_out
+            headers.wipe_out
+            first := True
+
+            lines := file.read_lines
+            <span class="keyword">across</span> lines <span class="keyword">as</span> line <span class="keyword">loop</span>
+                <span class="keyword">if</span> first <span class="keyword">then</span>
+                    headers := parse_row (line)
+                    first := False
+                <span class="keyword">else</span>
+                    rows.extend (parse_row (line))
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    get_column (a_header: STRING_32): ARRAYED_LIST [STRING_32]
+            <span class="comment">-- Get all values for a column</span>
+        <span class="keyword">local</span>
+            idx: INTEGER
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (rows.count)
+            idx := headers.index_of (a_header, 1)
+            <span class="keyword">if</span> idx > 0 <span class="keyword">then</span>
+                <span class="keyword">across</span> rows <span class="keyword">as</span> row <span class="keyword">loop</span>
+                    <span class="keyword">if</span> row.valid_index (idx) <span class="keyword">then</span>
+                        Result.extend (row[idx])
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Writing</span>
+
+    save
+            <span class="comment">-- Write CSV to file</span>
+        <span class="keyword">local</span>
+            content: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> content.make (4096)
+
+            <span class="comment">-- Headers</span>
+            content.append (format_row (headers))
+            content.append_character ('%N')
+
+            <span class="comment">-- Data rows</span>
+            <span class="keyword">across</span> rows <span class="keyword">as</span> row <span class="keyword">loop</span>
+                content.append (format_row (row))
+                content.append_character ('%N')
+            <span class="keyword">end</span>
+
+            file.write_text (content)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    file: SIMPLE_FILE
+
+    parse_row (a_line: STRING_32): ARRAYED_LIST [STRING_32]
+            <span class="comment">-- Parse CSV row respecting quotes</span>
+        <span class="keyword">local</span>
+            field: STRING_32
+            in_quotes: BOOLEAN
+            i: INTEGER
+            c: CHARACTER_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (10)
+            <span class="keyword">create</span> field.make (50)
+            in_quotes := False
+
+            <span class="keyword">from</span> i := 1
+            <span class="keyword">until</span> i > a_line.count
+            <span class="keyword">loop</span>
+                c := a_line[i]
+                <span class="keyword">if</span> c = '"' <span class="keyword">then</span>
+                    in_quotes := <span class="keyword">not</span> in_quotes
+                <span class="keyword">elseif</span> c = delimiter <span class="keyword">and</span> <span class="keyword">not</span> in_quotes <span class="keyword">then</span>
+                    Result.extend (field.twin)
+                    field.wipe_out
+                <span class="keyword">else</span>
+                    field.append_character (c)
+                <span class="keyword">end</span>
+                i := i + 1
+            <span class="keyword">end</span>
+            Result.extend (field)
+        <span class="keyword">end</span>
+
+    format_row (a_fields: LIST [STRING_32]): STRING_32
+            <span class="comment">-- Format fields as CSV row</span>
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (100)
+            <span class="keyword">across</span> a_fields <span class="keyword">as</span> f <span class="keyword">loop</span>
+                <span class="keyword">if</span> Result.count > 0 <span class="keyword">then</span>
+                    Result.append_character (delimiter)
+                <span class="keyword">end</span>
+                <span class="keyword">if</span> f.has (delimiter) <span class="keyword">or</span> f.has ('"') <span class="keyword">then</span>
+                    Result.append_character ('"')
+                    Result.append (f.twin.replaced_substring_all (<span class="string">"%""</span>, <span class="string">"%"%""</span>))
+                    Result.append_character ('"')
+                <span class="keyword">else</span>
+                    Result.append (f)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="directory-sync">
+            <h2>5. Directory Synchronizer</h2>
+            <p>Synchronize two directories, copying new and updated files.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">DIRECTORY_SYNC</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_source, a_dest: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> source_dir.make (a_source)
+            <span class="keyword">create</span> dest_dir.make (a_dest)
+            copied_count := 0
+            updated_count := 0
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Status</span>
+
+    copied_count: INTEGER
+    updated_count: INTEGER
+
+<span class="keyword">feature</span> <span class="comment">-- Operations</span>
+
+    sync
+            <span class="comment">-- Synchronize source to destination</span>
+        <span class="keyword">require</span>
+            source_exists: source_dir.exists
+        <span class="keyword">do</span>
+            copied_count := 0
+            updated_count := 0
+
+            <span class="keyword">if</span> <span class="keyword">not</span> dest_dir.exists <span class="keyword">then</span>
+                dest_dir.create_directory_recursive
+            <span class="keyword">end</span>
+
+            sync_directory (source_dir.path_string, dest_dir.path_string)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    source_dir: SIMPLE_FILE
+    dest_dir: SIMPLE_FILE
+
+    sync_directory (a_source, a_dest: STRING_32)
+        <span class="keyword">local</span>
+            src_files: SIMPLE_FILES
+            src_file, dest_file: SIMPLE_FILE
+            dest_path: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> src_files.make (a_source)
+
+            <span class="comment">-- Sync files</span>
+            <span class="keyword">across</span> src_files.all_files <span class="keyword">as</span> f <span class="keyword">loop</span>
+                src_file := f
+                dest_path := a_dest + <span class="string">"/"</span> + src_file.file_name
+                <span class="keyword">create</span> dest_file.make (dest_path)
+
+                <span class="keyword">if</span> <span class="keyword">not</span> dest_file.exists <span class="keyword">then</span>
+                    <span class="comment">-- New file</span>
+                    src_file.copy_to (dest_path)
+                    copied_count := copied_count + 1
+                <span class="keyword">elseif</span> src_file.modified_timestamp > dest_file.modified_timestamp <span class="keyword">then</span>
+                    <span class="comment">-- Updated file</span>
+                    dest_file.delete
+                    src_file.copy_to (dest_path)
+                    updated_count := updated_count + 1
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+
+            <span class="comment">-- Recursively sync subdirectories</span>
+            <span class="keyword">across</span> src_files.all_directories <span class="keyword">as</span> d <span class="keyword">loop</span>
+                dest_path := a_dest + <span class="string">"/"</span> + d.file_name
+                sync_directory (d.path_string, dest_path)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="temp-files">
+            <h2>6. Temporary File Handler</h2>
+            <p>Create and manage temporary files with automatic cleanup.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">TEMP_FILE_HANDLER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> temp_files.make (10)
+            temp_dir := get_temp_dir
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Creation</span>
+
+    create_temp_file (a_prefix, a_extension: STRING_32): SIMPLE_FILE
+            <span class="comment">-- Create new temporary file</span>
+        <span class="keyword">local</span>
+            name: STRING_32
+        <span class="keyword">do</span>
+            name := temp_dir + <span class="string">"/"</span> + a_prefix + <span class="string">"_"</span> +
+                    unique_id.out + <span class="string">"."</span> + a_extension
+            <span class="keyword">create</span> Result.make (name)
+            Result.create_empty
+            temp_files.extend (Result)
+        <span class="keyword">ensure</span>
+            file_exists: Result.exists
+            tracked: temp_files.has (Result)
+        <span class="keyword">end</span>
+
+    create_temp_dir (a_prefix: STRING_32): SIMPLE_FILE
+            <span class="comment">-- Create new temporary directory</span>
+        <span class="keyword">local</span>
+            name: STRING_32
+        <span class="keyword">do</span>
+            name := temp_dir + <span class="string">"/"</span> + a_prefix + <span class="string">"_"</span> + unique_id.out
+            <span class="keyword">create</span> Result.make (name)
+            Result.create_directory
+            temp_files.extend (Result)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Cleanup</span>
+
+    cleanup
+            <span class="comment">-- Delete all temporary files</span>
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> temp_files <span class="keyword">as</span> f <span class="keyword">loop</span>
+                <span class="keyword">if</span> f.exists <span class="keyword">then</span>
+                    <span class="keyword">if</span> f.is_directory <span class="keyword">then</span>
+                        f.delete_directory_recursive
+                    <span class="keyword">else</span>
+                        f.delete
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            temp_files.wipe_out
+        <span class="keyword">ensure</span>
+            all_cleaned: temp_files.is_empty
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    temp_files: ARRAYED_LIST [SIMPLE_FILE]
+    temp_dir: STRING_32
+    counter: INTEGER
+
+    unique_id: INTEGER
+        <span class="keyword">do</span>
+            counter := counter + 1
+            Result := counter
+        <span class="keyword">end</span>
+
+    get_temp_dir: STRING_32
+        <span class="keyword">local</span>
+            env: EXECUTION_ENVIRONMENT
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> env
+            <span class="keyword">if</span> <span class="keyword">attached</span> env.get (<span class="string">"TEMP"</span>) <span class="keyword">as</span> t <span class="keyword">then</span>
+                Result := t.to_string_32
+            <span class="keyword">elseif</span> <span class="keyword">attached</span> env.get (<span class="string">"TMP"</span>) <span class="keyword">as</span> t <span class="keyword">then</span>
+                Result := t.to_string_32
+            <span class="keyword">else</span>
+                Result := <span class="string">"/tmp"</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    temp: TEMP_FILE_HANDLER
+    work_file: SIMPLE_FILE
+<span class="keyword">do</span>
+    <span class="keyword">create</span> temp.make
+
+    <span class="comment">-- Create temp file for processing</span>
+    work_file := temp.create_temp_file (<span class="string">"process"</span>, <span class="string">"tmp"</span>)
+    work_file.write_text (<span class="string">"intermediate data"</span>)
+
+    <span class="comment">-- Do work...</span>
+
+    <span class="comment">-- Cleanup when done</span>
+    temp.cleanup
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="file-watcher">
+            <h2>7. File Change Detector</h2>
+            <p>Detect changes to files by tracking modification timestamps.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">FILE_CHANGE_DETECTOR</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> watched_files.make (20)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Setup</span>
+
+    watch (a_path: STRING_32)
+            <span class="comment">-- Add file to watch list</span>
+        <span class="keyword">local</span>
+            f: SIMPLE_FILE
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> f.make (a_path)
+            <span class="keyword">if</span> f.exists <span class="keyword">then</span>
+                watched_files.force (f.modified_timestamp, a_path)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    watch_directory (a_dir_path, a_pattern: STRING_32)
+            <span class="comment">-- Watch all files matching pattern</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> files.make (a_dir_path)
+            <span class="keyword">across</span> files.find_by_pattern (a_pattern) <span class="keyword">as</span> f <span class="keyword">loop</span>
+                watch (f.path_string)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Detection</span>
+
+    check_changes: ARRAYED_LIST [STRING_32]
+            <span class="comment">-- Return list of changed files</span>
+        <span class="keyword">local</span>
+            f: SIMPLE_FILE
+            old_time, new_time: INTEGER
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (10)
+
+            <span class="keyword">across</span> watched_files <span class="keyword">as</span> entry <span class="keyword">loop</span>
+                <span class="keyword">create</span> f.make (entry.key)
+                old_time := entry
+
+                <span class="keyword">if</span> f.exists <span class="keyword">then</span>
+                    new_time := f.modified_timestamp
+                    <span class="keyword">if</span> new_time > old_time <span class="keyword">then</span>
+                        Result.extend (entry.key)
+                        watched_files.force (new_time, entry.key)
+                    <span class="keyword">end</span>
+                <span class="keyword">else</span>
+                    <span class="comment">-- File was deleted</span>
+                    Result.extend (entry.key + <span class="string">" (deleted)"</span>)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    watched_files: HASH_TABLE [INTEGER, STRING_32]
+            <span class="comment">-- Path -> last known timestamp</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="batch-rename">
+            <h2>8. Batch File Renamer</h2>
+            <p>Rename multiple files using patterns and transformations.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">BATCH_RENAMER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_directory: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> directory.make (a_directory)
+            dry_run := True  <span class="comment">-- Preview by default</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Configuration</span>
+
+    dry_run: BOOLEAN
+            <span class="comment">-- Preview changes without executing?</span>
+
+    set_dry_run (v: BOOLEAN)
+        <span class="keyword">do</span>
+            dry_run := v
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Operations</span>
+
+    add_prefix (a_pattern, a_prefix: STRING_32): ARRAYED_LIST [TUPLE [old_name, new_name: STRING_32]]
+            <span class="comment">-- Add prefix to matching files</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+            new_name: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (20)
+            <span class="keyword">create</span> files.make (directory.path_string)
+
+            <span class="keyword">across</span> files.find_by_pattern (a_pattern) <span class="keyword">as</span> f <span class="keyword">loop</span>
+                new_name := a_prefix + f.file_name
+                Result.extend ([f.file_name, new_name])
+                <span class="keyword">if</span> <span class="keyword">not</span> dry_run <span class="keyword">then</span>
+                    f.rename_to (new_name)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    replace_in_name (a_pattern, a_find, a_replace: STRING_32): ARRAYED_LIST [TUPLE [old_name, new_name: STRING_32]]
+            <span class="comment">-- Replace substring in filename</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+            new_name: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (20)
+            <span class="keyword">create</span> files.make (directory.path_string)
+
+            <span class="keyword">across</span> files.find_by_pattern (a_pattern) <span class="keyword">as</span> f <span class="keyword">loop</span>
+                new_name := f.file_name.twin
+                new_name.replace_substring_all (a_find, a_replace)
+                <span class="keyword">if</span> <span class="keyword">not</span> new_name.same_string (f.file_name) <span class="keyword">then</span>
+                    Result.extend ([f.file_name, new_name])
+                    <span class="keyword">if</span> <span class="keyword">not</span> dry_run <span class="keyword">then</span>
+                        f.rename_to (new_name)
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    sequential_rename (a_pattern, a_base: STRING_32; a_start: INTEGER): ARRAYED_LIST [TUPLE [old_name, new_name: STRING_32]]
+            <span class="comment">-- Rename with sequential numbers</span>
+        <span class="keyword">local</span>
+            files: SIMPLE_FILES
+            counter: INTEGER
+            new_name: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (20)
+            <span class="keyword">create</span> files.make (directory.path_string)
+            counter := a_start
+
+            <span class="keyword">across</span> files.find_by_pattern (a_pattern) <span class="keyword">as</span> f <span class="keyword">loop</span>
+                new_name := a_base + counter.out.to_string_32 + <span class="string">"."</span> + f.extension
+                Result.extend ([f.file_name, new_name])
+                <span class="keyword">if</span> <span class="keyword">not</span> dry_run <span class="keyword">then</span>
+                    f.rename_to (new_name)
+                <span class="keyword">end</span>
+                counter := counter + 1
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    directory: SIMPLE_FILE
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    renamer: BATCH_RENAMER
+    changes: ARRAYED_LIST [TUPLE [old_name, new_name: STRING_32]]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> renamer.make (<span class="string">"/photos"</span>)
+
+    <span class="comment">-- Preview changes first</span>
+    changes := renamer.sequential_rename (<span class="string">"*.jpg"</span>, <span class="string">"vacation_"</span>, 1)
+    <span class="keyword">across</span> changes <span class="keyword">as</span> c <span class="keyword">loop</span>
+        print (c.old_name + <span class="string">" -> "</span> + c.new_name + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+
+    <span class="comment">-- Execute if satisfied</span>
+    renamer.set_dry_run (False)
+    renamer.sequential_rename (<span class="string">"*.jpg"</span>, <span class="string">"vacation_"</span>, 1)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="tree-walker">
+            <h2>9. Directory Tree Walker</h2>
+            <p>Walk a directory tree and apply actions to files.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">DIRECTORY_WALKER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Initialization</span>
+
+    make (a_root: STRING_32)
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> root.make (a_root)
+            total_files := 0
+            total_size := 0
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Statistics</span>
+
+    total_files: INTEGER
+    total_size: INTEGER_64
+
+<span class="keyword">feature</span> <span class="comment">-- Walking</span>
+
+    walk (a_action: PROCEDURE [SIMPLE_FILE])
+            <span class="comment">-- Walk tree and apply action to each file</span>
+        <span class="keyword">require</span>
+            action_not_void: a_action /= <span class="keyword">Void</span>
+        <span class="keyword">do</span>
+            total_files := 0
+            total_size := 0
+            walk_directory (root.path_string, a_action)
+        <span class="keyword">end</span>
+
+    walk_filtered (a_pattern: STRING_32; a_action: PROCEDURE [SIMPLE_FILE])
+            <span class="comment">-- Walk tree, apply action only to files matching pattern</span>
+        <span class="keyword">do</span>
+            walk (agent (f: SIMPLE_FILE; pattern: STRING_32; action: PROCEDURE [SIMPLE_FILE])
+                <span class="keyword">do</span>
+                    <span class="keyword">if</span> f.file_name.glob_matches (pattern) <span class="keyword">then</span>
+                        action.call ([f])
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span> (?, a_pattern, a_action))
+        <span class="keyword">end</span>
+
+    collect_by_extension (a_ext: STRING_32): ARRAYED_LIST [SIMPLE_FILE]
+            <span class="comment">-- Collect all files with extension</span>
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> Result.make (100)
+            walk (agent (f: SIMPLE_FILE; ext: STRING_32; list: ARRAYED_LIST [SIMPLE_FILE])
+                <span class="keyword">do</span>
+                    <span class="keyword">if</span> f.extension.same_string (ext) <span class="keyword">then</span>
+                        list.extend (f)
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span> (?, a_ext, Result))
+        <span class="keyword">end</span>
+
+    find_largest_files (n: INTEGER): ARRAYED_LIST [SIMPLE_FILE]
+            <span class="comment">-- Find n largest files</span>
+        <span class="keyword">local</span>
+            all_files: ARRAYED_LIST [SIMPLE_FILE]
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> all_files.make (1000)
+            walk (agent (f: SIMPLE_FILE; list: ARRAYED_LIST [SIMPLE_FILE])
+                <span class="keyword">do</span>
+                    list.extend (f)
+                <span class="keyword">end</span> (?, all_files))
+
+            <span class="comment">-- Sort by size descending</span>
+            sort_by_size_desc (all_files)
+
+            <span class="comment">-- Take top n</span>
+            <span class="keyword">create</span> Result.make (n)
+            <span class="keyword">across</span> all_files.new_cursor.take (n) <span class="keyword">as</span> f <span class="keyword">loop</span>
+                Result.extend (f)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    root: SIMPLE_FILE
+
+    walk_directory (a_path: STRING_32; a_action: PROCEDURE [SIMPLE_FILE])
+        <span class="keyword">local</span>
+            dir: SIMPLE_FILE
+            files: SIMPLE_FILES
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> dir.make (a_path)
+            <span class="keyword">if</span> dir.exists <span class="keyword">and</span> dir.is_directory <span class="keyword">then</span>
+                <span class="keyword">create</span> files.make (a_path)
+
+                <span class="comment">-- Process files</span>
+                <span class="keyword">across</span> files.all_files <span class="keyword">as</span> f <span class="keyword">loop</span>
+                    total_files := total_files + 1
+                    total_size := total_size + f.size
+                    a_action.call ([f])
+                <span class="keyword">end</span>
+
+                <span class="comment">-- Recurse into subdirectories</span>
+                <span class="keyword">across</span> files.all_directories <span class="keyword">as</span> d <span class="keyword">loop</span>
+                    walk_directory (d.path_string, a_action)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    sort_by_size_desc (a_list: ARRAYED_LIST [SIMPLE_FILE])
+            <span class="comment">-- Sort files by size, largest first</span>
+        <span class="keyword">do</span>
+            <span class="comment">-- Implementation using sorter</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    walker: DIRECTORY_WALKER
+    largest: ARRAYED_LIST [SIMPLE_FILE]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> walker.make (<span class="string">"/home/user"</span>)
+
+    <span class="comment">-- Print all .e files</span>
+    walker.walk_filtered (<span class="string">"*.e"</span>, agent (f: SIMPLE_FILE)
+        <span class="keyword">do</span>
+            print (f.path_string + <span class="string">"%N"</span>)
+        <span class="keyword">end</span>)
+
+    <span class="comment">-- Find 10 largest files</span>
+    largest := walker.find_largest_files (10)
+    <span class="keyword">across</span> largest <span class="keyword">as</span> f <span class="keyword">loop</span>
+        print (f.size.out + <span class="string">": "</span> + f.path_string + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+
+    print (<span class="string">"Total: "</span> + walker.total_files.out + <span class="string">" files, "</span> +
+           walker.total_size.out + <span class="string">" bytes%N"</span>)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="safe-writer">
+            <h2>10. Atomic File Writer</h2>
+            <p>Write files atomically to prevent corruption from crashes or interruptions.</p>
+
+<pre><code><span class="keyword">class</span> <span class="type">ATOMIC_WRITER</span>
+
+<span class="keyword">feature</span> <span class="comment">-- Operations</span>
+
+    write_atomic (a_path: STRING_32; a_content: STRING_32): BOOLEAN
+            <span class="comment">-- Write file atomically (write to temp, then rename)</span>
+        <span class="keyword">local</span>
+            target: SIMPLE_FILE
+            temp: SIMPLE_FILE
+            temp_path: STRING_32
+        <span class="keyword">do</span>
+            <span class="comment">-- Create temp file in same directory</span>
+            temp_path := a_path + <span class="string">".tmp."</span> + unique_suffix
+            <span class="keyword">create</span> temp.make (temp_path)
+            <span class="keyword">create</span> target.make (a_path)
+
+            <span class="comment">-- Write to temp</span>
+            temp.write_text (a_content)
+
+            <span class="keyword">if</span> <span class="keyword">not</span> temp.has_error <span class="keyword">then</span>
+                <span class="comment">-- Delete existing target</span>
+                <span class="keyword">if</span> target.exists <span class="keyword">then</span>
+                    target.delete
+                <span class="keyword">end</span>
+
+                <span class="comment">-- Rename temp to target (atomic on most filesystems)</span>
+                temp.rename_to (a_path)
+                Result := <span class="keyword">not</span> temp.has_error
+            <span class="keyword">end</span>
+
+            <span class="comment">-- Cleanup temp if rename failed</span>
+            <span class="keyword">if</span> <span class="keyword">not</span> Result <span class="keyword">and</span> temp.exists <span class="keyword">then</span>
+                temp.delete
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    write_with_backup (a_path: STRING_32; a_content: STRING_32): BOOLEAN
+            <span class="comment">-- Write with automatic backup of existing file</span>
+        <span class="keyword">local</span>
+            target: SIMPLE_FILE
+            backup_path: STRING_32
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> target.make (a_path)
+
+            <span class="comment">-- Backup existing file</span>
+            <span class="keyword">if</span> target.exists <span class="keyword">then</span>
+                backup_path := a_path + <span class="string">".bak"</span>
+                target.copy_to (backup_path)
+            <span class="keyword">end</span>
+
+            <span class="comment">-- Atomic write</span>
+            Result := write_atomic (a_path, a_content)
+
+            <span class="comment">-- If failed, restore backup</span>
+            <span class="keyword">if</span> <span class="keyword">not</span> Result <span class="keyword">and</span> backup_path /= <span class="keyword">Void</span> <span class="keyword">then</span>
+                <span class="keyword">create</span> target.make (backup_path)
+                <span class="keyword">if</span> target.exists <span class="keyword">then</span>
+                    target.copy_to (a_path)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE} <span class="comment">-- Implementation</span>
+
+    unique_suffix: STRING_32
+        <span class="keyword">local</span>
+            uuid: UUID_GENERATOR
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> uuid
+            Result := uuid.generate_uuid.out.to_string_32
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    writer: ATOMIC_WRITER
+<span class="keyword">do</span>
+    <span class="keyword">create</span> writer
+
+    <span class="comment">-- Simple atomic write</span>
+    <span class="keyword">if</span> writer.write_atomic (<span class="string">"config.json"</span>, json_content) <span class="keyword">then</span>
+        print (<span class="string">"Config saved safely%N"</span>)
+    <span class="keyword">end</span>
+
+    <span class="comment">-- Write with backup (preserves original if write fails)</span>
+    <span class="keyword">if</span> writer.write_with_backup (<span class="string">"important.dat"</span>, data) <span class="keyword">then</span>
+        print (<span class="string">"Data saved, backup at important.dat.bak%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
+        <p>&copy; 2025 Larry Rix. MIT License.</p>
+    </footer>
+</body>
+</html>

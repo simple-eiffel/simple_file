@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - simple_file</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">User Guide</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html" class="active">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+
+            <h3>Installation</h3>
+            <ol>
+                <li>Set the environment variable:
+<pre><code>export SIMPLE_FILE=/path/to/simple_file</code></pre>
+                </li>
+                <li>Add to your ECF file:
+<pre><code>&lt;library name="simple_file" location="$SIMPLE_FILE/simple_file.ecf"/&gt;</code></pre>
+                </li>
+            </ol>
+
+            <h3>Basic Usage</h3>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"myfile.txt"</span>)
+
+    <span class="comment">-- Write content</span>
+    f.write_text (<span class="string">"Hello, World!"</span>)
+
+    <span class="comment">-- Read content back</span>
+    print (f.read_text)
+
+    <span class="comment">-- Get file info</span>
+    print (<span class="string">"Size: "</span> + f.size.out + <span class="string">" bytes"</span>)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="file-status">
+            <h2>File Status</h2>
+
+            <h3>Checking Existence</h3>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"/path/to/file.txt"</span>)
+
+    <span class="keyword">if</span> f.exists <span class="keyword">then</span>
+        <span class="keyword">if</span> f.is_file <span class="keyword">then</span>
+            print (<span class="string">"It's a regular file"</span>)
+        <span class="keyword">elseif</span> f.is_directory <span class="keyword">then</span>
+            print (<span class="string">"It's a directory"</span>)
+        <span class="keyword">elseif</span> f.is_symlink <span class="keyword">then</span>
+            print (<span class="string">"It's a symbolic link"</span>)
+        <span class="keyword">end</span>
+    <span class="keyword">else</span>
+        print (<span class="string">"File does not exist"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Checking Permissions</h3>
+<pre><code><span class="keyword">if</span> f.is_readable <span class="keyword">then</span>
+    <span class="comment">-- Safe to read</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> f.is_writable <span class="keyword">then</span>
+    <span class="comment">-- Safe to write</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> f.is_executable <span class="keyword">then</span>
+    <span class="comment">-- Safe to execute</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="file-metadata">
+            <h2>File Metadata</h2>
+
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"document.pdf"</span>)
+
+    <span class="comment">-- Size in bytes</span>
+    print (<span class="string">"Size: "</span> + f.size.out + <span class="string">" bytes"</span>)
+
+    <span class="comment">-- Timestamps (seconds since epoch)</span>
+    print (<span class="string">"Modified: "</span> + f.modified_timestamp.out)
+    print (<span class="string">"Accessed: "</span> + f.accessed_timestamp.out)
+
+    <span class="comment">-- Name parts</span>
+    print (<span class="string">"File name: "</span> + f.file_name)        <span class="comment">-- "document.pdf"</span>
+    print (<span class="string">"Base name: "</span> + f.base_name)        <span class="comment">-- "document"</span>
+    print (<span class="string">"Extension: "</span> + f.extension)        <span class="comment">-- "pdf"</span>
+    print (<span class="string">"Parent: "</span> + f.parent_path)          <span class="comment">-- parent directory</span>
+    print (<span class="string">"Full path: "</span> + f.path_string)      <span class="comment">-- full path</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="reading">
+            <h2>Reading Files</h2>
+
+            <h3>Read Entire File</h3>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+    content: STRING_32
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"data.txt"</span>)
+
+    <span class="comment">-- Read as text (STRING_32)</span>
+    content := f.read_text
+
+    <span class="comment">-- Check for errors</span>
+    <span class="keyword">if</span> f.has_error <span class="keyword">then</span>
+        print (<span class="string">"Error: "</span> + f.last_error)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Read as Lines</h3>
+<pre><code><span class="keyword">local</span>
+    lines: ARRAYED_LIST [STRING_32]
+<span class="keyword">do</span>
+    lines := f.read_lines
+
+    <span class="keyword">across</span> lines <span class="keyword">as</span> line <span class="keyword">loop</span>
+        print (line + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Read as Bytes</h3>
+<pre><code><span class="keyword">local</span>
+    bytes: ARRAY [NATURAL_8]
+<span class="keyword">do</span>
+    bytes := f.read_bytes
+
+    print (<span class="string">"Read "</span> + bytes.count.out + <span class="string">" bytes"</span>)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Streaming Large Files</h3>
+<pre><code><span class="keyword">local</span>
+    chunk: STRING_32
+<span class="keyword">do</span>
+    f.open_read
+
+    <span class="keyword">from</span>
+    <span class="keyword">until</span>
+        f.end_of_file
+    <span class="keyword">loop</span>
+        chunk := f.read_chunk (4096)  <span class="comment">-- 4KB at a time</span>
+        process_chunk (chunk)
+    <span class="keyword">end</span>
+
+    f.close
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="writing">
+            <h2>Writing Files</h2>
+
+            <h3>Write Text</h3>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"output.txt"</span>)
+
+    <span class="comment">-- Write (overwrites existing)</span>
+    f.write_text (<span class="string">"Hello, World!"</span>)
+
+    <span class="comment">-- Append to existing</span>
+    f.append_text (<span class="string">"%NMore content"</span>)
+
+    <span class="comment">-- Check for errors</span>
+    <span class="keyword">if</span> f.has_error <span class="keyword">then</span>
+        print (<span class="string">"Error: "</span> + f.last_error)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Write Lines</h3>
+<pre><code><span class="keyword">local</span>
+    lines: ARRAYED_LIST [STRING_32]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> lines.make (3)
+    lines.force (<span class="string">"Line 1"</span>)
+    lines.force (<span class="string">"Line 2"</span>)
+    lines.force (<span class="string">"Line 3"</span>)
+
+    f.write_lines (lines)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Write Bytes</h3>
+<pre><code><span class="keyword">local</span>
+    bytes: ARRAY [NATURAL_8]
+<span class="keyword">do</span>
+    <span class="comment">-- Binary data</span>
+    bytes := &lt;&lt;0x48, 0x65, 0x6C, 0x6C, 0x6F&gt;&gt;  <span class="comment">-- "Hello"</span>
+
+    f.write_bytes (bytes)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="file-operations">
+            <h2>File Operations</h2>
+
+            <h3>Copy, Move, Delete</h3>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"original.txt"</span>)
+
+    <span class="comment">-- Copy file</span>
+    f.copy_to (<span class="string">"backup.txt"</span>)
+
+    <span class="comment">-- Move/rename file</span>
+    f.move_to (<span class="string">"new_location/original.txt"</span>)
+
+    <span class="comment">-- Rename (same directory)</span>
+    f.rename_to (<span class="string">"renamed.txt"</span>)
+
+    <span class="comment">-- Delete file</span>
+    f.delete
+
+    <span class="comment">-- Check each operation</span>
+    <span class="keyword">if</span> f.has_error <span class="keyword">then</span>
+        print (f.last_error)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Create File</h3>
+<pre><code><span class="comment">-- Create empty file (touch)</span>
+f.create_empty
+
+<span class="comment">-- Create with content</span>
+f.write_text (<span class="string">"Initial content"</span>)</code></pre>
+        </section>
+
+        <section id="directories">
+            <h2>Directory Operations</h2>
+
+            <h3>List Directory Contents</h3>
+<pre><code><span class="keyword">local</span>
+    dir: <span class="type">SIMPLE_FILE</span>
+    entries: ARRAYED_LIST [STRING_32]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> dir.make (<span class="string">"/path/to/directory"</span>)
+
+    <span class="keyword">if</span> dir.is_directory <span class="keyword">then</span>
+        <span class="comment">-- List all entries</span>
+        entries := dir.list_directory
+
+        <span class="keyword">across</span> entries <span class="keyword">as</span> e <span class="keyword">loop</span>
+            print (e + <span class="string">"%N"</span>)
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Create and Delete Directories</h3>
+<pre><code><span class="comment">-- Create directory</span>
+dir.create_directory
+
+<span class="comment">-- Create nested directories (mkdir -p)</span>
+dir.create_directory_recursive
+
+<span class="comment">-- Delete empty directory</span>
+dir.delete_directory
+
+<span class="comment">-- Delete directory and all contents</span>
+dir.delete_directory_recursive</code></pre>
+        </section>
+
+        <section id="paths">
+            <h2>Path Operations</h2>
+
+            <h3>Using SIMPLE_PATH</h3>
+<pre><code><span class="keyword">local</span>
+    p: <span class="type">SIMPLE_PATH</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> p.make (<span class="string">"/home/user/documents"</span>)
+
+    <span class="comment">-- Join paths</span>
+    p := p.joined (<span class="string">"subfolder"</span>)
+    p := p.joined (<span class="string">"file.txt"</span>)
+    <span class="comment">-- Result: /home/user/documents/subfolder/file.txt</span>
+
+    <span class="comment">-- Path parts</span>
+    print (p.parent.name)     <span class="comment">-- Parent directory</span>
+    print (p.file_name)       <span class="comment">-- Just the filename</span>
+    print (p.extension)       <span class="comment">-- Just the extension</span>
+
+    <span class="comment">-- Absolute/relative</span>
+    <span class="keyword">if</span> p.is_absolute <span class="keyword">then</span>
+        print (<span class="string">"Absolute path"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="batch-operations">
+            <h2>Batch Operations with SIMPLE_FILES</h2>
+
+<pre><code><span class="keyword">local</span>
+    files: <span class="type">SIMPLE_FILES</span>
+    matches: ARRAYED_LIST [<span class="type">SIMPLE_FILE</span>]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> files.make (<span class="string">"/project"</span>)
+
+    <span class="comment">-- Find all .txt files</span>
+    matches := files.find_by_extension (<span class="string">"txt"</span>)
+
+    <span class="comment">-- Find files matching pattern</span>
+    matches := files.find_by_pattern (<span class="string">"*.log"</span>)
+
+    <span class="comment">-- Find files recursively</span>
+    matches := files.find_recursive (<span class="string">"*.e"</span>)
+
+    <span class="comment">-- Process matches</span>
+    <span class="keyword">across</span> matches <span class="keyword">as</span> f <span class="keyword">loop</span>
+        print (f.path_string + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling</h2>
+
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"nonexistent.txt"</span>)
+
+    f.read_text
+
+    <span class="keyword">if</span> f.has_error <span class="keyword">then</span>
+        print (<span class="string">"Error: "</span> + f.last_error)
+        <span class="comment">-- e.g., "File does not exist"</span>
+
+        <span class="comment">-- Clear error for retry</span>
+        f.clear_error
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
+        <p>&copy; 2025 Larry Rix. MIT License.</p>
+    </footer>
+</body>
+</html>

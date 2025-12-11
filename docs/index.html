@@ -3,178 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIMPLE_FILE - Documentation</title>
+    <title>simple_file - Documentation</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
 </head>
 <body>
     <header>
-        <h1>SIMPLE_FILE</h1>
-        <p>Simple file and directory operations for Eiffel</p>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_file</h1>
+        <p class="tagline">Simple file and directory operations for Eiffel</p>
     </header>
 
     <nav>
-        <a href="#overview">Overview</a>
-        <a href="#quick-start">Quick Start</a>
-        <a href="#api">API Reference</a>
-        <a href="#examples">Examples</a>
-        <a href="https://github.com/simple-eiffel/simple_file">GitHub</a>
+        <ul>
+            <li><a href="index.html" class="active">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></li>
+        </ul>
     </nav>
 
     <main>
         <section id="overview">
             <h2>Overview</h2>
-            <p>SIMPLE_FILE provides a clean, intuitive API for file and directory operations in Eiffel. It wraps the standard Eiffel file classes with a simpler interface and better error handling.</p>
+            <p>simple_file provides a clean, intuitive API for file and directory operations in Eiffel. It wraps the standard Eiffel file classes with a simpler interface and better error handling.</p>
 
-            <h3>Key Features</h3>
-            <ul>
-                <li>File status checking (exists, readable, writable)</li>
-                <li>File metadata access (size, timestamps, extension)</li>
-                <li>Read operations (text, bytes, lines)</li>
-                <li>Write operations with append support</li>
-                <li>File operations (copy, move, rename, delete)</li>
-                <li>Directory listing and manipulation</li>
-                <li>Memory-efficient streaming for large files</li>
-                <li>Path transformation utilities</li>
-            </ul>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>File Operations</h3>
+                    <p>Read, write, copy, move, delete files with simple one-line operations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Directory Management</h3>
+                    <p>List, create, and delete directories. Find files by pattern.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Streaming Support</h3>
+                    <p>Memory-efficient processing of large files via chunked reading.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Path Utilities</h3>
+                    <p>Cross-platform path manipulation and normalization.</p>
+                </div>
+            </div>
         </section>
 
         <section id="quick-start">
             <h2>Quick Start</h2>
-            <h3>Installation</h3>
-            <pre><code>&lt;library name="simple_file" location="$SIMPLE_FILE/simple_file.ecf"/&gt;</code></pre>
 
-            <h3>Environment Variable</h3>
-            <pre><code>SIMPLE_FILE=/path/to/simple_file</code></pre>
+            <h3>Installation</h3>
+            <ol>
+                <li>Set the environment variable:
+<pre><code>export SIMPLE_FILE=/path/to/simple_file</code></pre>
+                </li>
+                <li>Add to your ECF file:
+<pre><code>&lt;library name="simple_file" location="$SIMPLE_FILE/simple_file.ecf"/&gt;</code></pre>
+                </li>
+            </ol>
 
             <h3>Basic Usage</h3>
-            <pre><code>local
-    f: SIMPLE_FILE
-do
-    create f.make ("myfile.txt")
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"myfile.txt"</span>)
 
-    -- Write content
-    f.write_text ("Hello, World!")
+    <span class="comment">-- Write content</span>
+    f.write_text (<span class="string">"Hello, World!"</span>)
 
-    -- Read content back
+    <span class="comment">-- Read content back</span>
     print (f.read_text)
 
-    -- Get file info
-    print ("Size: " + f.size.out)
-end</code></pre>
+    <span class="comment">-- Get file info</span>
+    print (<span class="string">"Size: "</span> + f.size.out + <span class="string">" bytes"</span>)
+<span class="keyword">end</span></code></pre>
         </section>
 
-        <section id="api">
-            <h2>API Reference</h2>
-
-            <h3>Creation</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>make (path)</code></td><td>Create from string path</td></tr>
-                <tr><td><code>make_with_path (path)</code></td><td>Create from PATH object</td></tr>
-            </table>
+        <section id="features">
+            <h2>Key Features</h2>
 
             <h3>File Status</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>exists</code></td><td>Does file/directory exist?</td></tr>
-                <tr><td><code>is_readable</code></td><td>Can file be read?</td></tr>
-                <tr><td><code>is_writable</code></td><td>Can file be written?</td></tr>
-                <tr><td><code>is_executable</code></td><td>Can file be executed?</td></tr>
-                <tr><td><code>is_directory</code></td><td>Is this a directory?</td></tr>
-                <tr><td><code>is_file</code></td><td>Is this a regular file?</td></tr>
-            </table>
+            <ul>
+                <li><code>exists</code> - Does file/directory exist?</li>
+                <li><code>is_readable</code>, <code>is_writable</code>, <code>is_executable</code> - Permission checks</li>
+                <li><code>is_file</code>, <code>is_directory</code>, <code>is_symlink</code> - Type checks</li>
+            </ul>
 
             <h3>File Metadata</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>size</code></td><td>Size in bytes</td></tr>
-                <tr><td><code>modified_timestamp</code></td><td>Modification time (epoch)</td></tr>
-                <tr><td><code>extension</code></td><td>File extension (e.g., "txt")</td></tr>
-                <tr><td><code>base_name</code></td><td>Name without extension</td></tr>
-                <tr><td><code>file_name</code></td><td>Full file name</td></tr>
-                <tr><td><code>parent_path</code></td><td>Parent directory path</td></tr>
-            </table>
+            <ul>
+                <li><code>size</code> - File size in bytes</li>
+                <li><code>modified_timestamp</code>, <code>accessed_timestamp</code> - Timestamps</li>
+                <li><code>extension</code>, <code>base_name</code>, <code>file_name</code> - Name parts</li>
+                <li><code>parent_path</code>, <code>path_string</code> - Path information</li>
+            </ul>
 
             <h3>Read Operations</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>read_text</code></td><td>Read entire file as UTF-8 text</td></tr>
-                <tr><td><code>read_bytes</code></td><td>Read as byte array</td></tr>
-                <tr><td><code>read_lines</code></td><td>Read all lines into list</td></tr>
-                <tr><td><code>each_line (action)</code></td><td>Stream lines one at a time</td></tr>
-                <tr><td><code>read_chunk (offset, size)</code></td><td>Read byte chunk at offset</td></tr>
-            </table>
+            <ul>
+                <li><code>read_text</code> - Read entire file as text</li>
+                <li><code>read_lines</code> - Read as list of lines</li>
+                <li><code>read_bytes</code> - Read as byte array</li>
+                <li>Streaming: <code>open_read</code>, <code>read_chunk</code>, <code>close</code></li>
+            </ul>
 
             <h3>Write Operations</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>write_text (content)</code></td><td>Write text (overwrites)</td></tr>
-                <tr><td><code>write_bytes (bytes)</code></td><td>Write byte array</td></tr>
-                <tr><td><code>write_lines (lines)</code></td><td>Write list of lines</td></tr>
-                <tr><td><code>append_text (content)</code></td><td>Append text to file</td></tr>
-                <tr><td><code>append_line (line)</code></td><td>Append line with newline</td></tr>
-                <tr><td><code>clear</code></td><td>Empty the file</td></tr>
-            </table>
+            <ul>
+                <li><code>write_text</code> - Write text (overwrites)</li>
+                <li><code>append_text</code> - Append to existing</li>
+                <li><code>write_lines</code>, <code>append_lines</code> - Line-based writing</li>
+                <li><code>write_bytes</code> - Binary writing</li>
+            </ul>
 
-            <h3>File Operations</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>copy_to (dest)</code></td><td>Copy to destination</td></tr>
-                <tr><td><code>move_to (dest)</code></td><td>Move to destination</td></tr>
-                <tr><td><code>rename_to (name)</code></td><td>Rename (same directory)</td></tr>
-                <tr><td><code>delete</code></td><td>Delete file</td></tr>
-                <tr><td><code>create_if_missing</code></td><td>Create empty if not exists</td></tr>
-            </table>
+            <h3>File Management</h3>
+            <ul>
+                <li><code>copy_to</code> - Copy to destination</li>
+                <li><code>move_to</code> - Move to destination</li>
+                <li><code>rename_to</code> - Rename in place</li>
+                <li><code>delete</code> - Delete file</li>
+            </ul>
 
             <h3>Directory Operations</h3>
-            <table>
-                <tr><th>Feature</th><th>Description</th></tr>
-                <tr><td><code>entries</code></td><td>All entries in directory</td></tr>
-                <tr><td><code>files</code></td><td>Only files (not subdirs)</td></tr>
-                <tr><td><code>directories</code></td><td>Only subdirectories</td></tr>
-                <tr><td><code>files_with_extension (ext)</code></td><td>Files with specific extension</td></tr>
-                <tr><td><code>create_directory</code></td><td>Create directory</td></tr>
-                <tr><td><code>create_directory_recursive</code></td><td>Create with parents</td></tr>
-                <tr><td><code>delete_directory</code></td><td>Delete empty directory</td></tr>
-                <tr><td><code>delete_directory_recursive</code></td><td>Delete with contents</td></tr>
+            <ul>
+                <li><code>list_directory</code> - List contents</li>
+                <li><code>create_directory</code>, <code>create_directory_recursive</code></li>
+                <li><code>delete_directory</code>, <code>delete_directory_recursive</code></li>
+            </ul>
+        </section>
+
+        <section id="classes">
+            <h2>Classes</h2>
+
+            <table class="api-table">
+                <tr>
+                    <th>Class</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><a href="api-reference.html#simple-file"><code>SIMPLE_FILE</code></a></td>
+                    <td>Main class for file and directory operations</td>
+                </tr>
+                <tr>
+                    <td><a href="api-reference.html#simple-files"><code>SIMPLE_FILES</code></a></td>
+                    <td>Batch operations and pattern matching</td>
+                </tr>
+                <tr>
+                    <td><a href="api-reference.html#simple-path"><code>SIMPLE_PATH</code></a></td>
+                    <td>Path manipulation utilities</td>
+                </tr>
             </table>
         </section>
 
-        <section id="examples">
-            <h2>Examples</h2>
+        <section id="documentation">
+            <h2>Documentation</h2>
+            <ul>
+                <li><a href="user-guide.html">User Guide</a> - Complete tutorial with examples</li>
+                <li><a href="api-reference.html">API Reference</a> - Full API documentation</li>
+                <li><a href="architecture.html">Architecture</a> - Internal design and patterns</li>
+                <li><a href="cookbook.html">Cookbook</a> - Ready-to-use recipes</li>
+            </ul>
+        </section>
 
-            <h3>Processing Large Files</h3>
-            <pre><code>local
-    f: SIMPLE_FILE
-do
-    create f.make ("large_log.txt")
+        <section id="example">
+            <h2>Example: Processing Large Files</h2>
+<pre><code><span class="keyword">local</span>
+    f: <span class="type">SIMPLE_FILE</span>
+    chunk: STRING_32
+<span class="keyword">do</span>
+    <span class="keyword">create</span> f.make (<span class="string">"large_log.txt"</span>)
 
-    -- Process line by line (memory efficient)
-    f.each_line (agent (line: STRING_32)
-        do
-            if line.has_substring ("ERROR") then
-                print (line + "%N")
-            end
-        end)
-end</code></pre>
+    <span class="comment">-- Stream in chunks (memory efficient)</span>
+    f.open_read
+    <span class="keyword">from</span>
+    <span class="keyword">until</span>
+        f.end_of_file
+    <span class="keyword">loop</span>
+        chunk := f.read_chunk (4096)  <span class="comment">-- 4KB at a time</span>
+        process_chunk (chunk)
+    <span class="keyword">end</span>
+    f.close
+<span class="keyword">end</span></code></pre>
+        </section>
 
-            <h3>Directory Listing</h3>
-            <pre><code>local
-    dir: SIMPLE_FILE
-do
-    create dir.make ("src/")
+        <section id="batch">
+            <h2>Example: Batch File Operations</h2>
+<pre><code><span class="keyword">local</span>
+    files: <span class="type">SIMPLE_FILES</span>
+    matches: ARRAYED_LIST [<span class="type">SIMPLE_FILE</span>]
+<span class="keyword">do</span>
+    <span class="keyword">create</span> files.make (<span class="string">"/project/src"</span>)
 
-    -- Get all Eiffel files
-    across dir.files_with_extension ("e") as f loop
-        print (f.item + "%N")
-    end
-end</code></pre>
+    <span class="comment">-- Find all Eiffel files</span>
+    matches := files.find_by_extension (<span class="string">"e"</span>)
+
+    <span class="comment">-- Find recursively</span>
+    matches := files.find_recursive (<span class="string">"*.e"</span>)
+
+    <span class="comment">-- Process each file</span>
+    <span class="keyword">across</span> matches <span class="keyword">as</span> f <span class="keyword">loop</span>
+        print (f.path_string + <span class="string">": "</span> + f.size.out + <span class="string">" bytes%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2024-2025 Larry Rix. MIT License.</p>
-        <p><a href="https://github.com/simple-eiffel/simple_file">GitHub</a></p>
+        <p>Part of the <a href="https://github.com/simple-eiffel">simple_*</a> ecosystem of focused, single-purpose Eiffel libraries.</p>
+        <p>&copy; 2025 Larry Rix. MIT License.</p>
     </footer>
 </body>
 </html>
