@@ -37,7 +37,9 @@ feature {NONE} -- Initialization
 
 feature -- File Status
 
-	exists: BOOLEAN
+	exists,
+	is_present,
+	found: BOOLEAN
 			-- Does file or directory exist?
 		local
 			l_file: RAW_FILE
@@ -104,7 +106,9 @@ feature -- File Status
 
 feature -- File Metadata
 
-	size: INTEGER_64
+	size,
+	length,
+	byte_count: INTEGER_64
 			-- Size in bytes (0 if file doesn't exist).
 		local
 			l_file: RAW_FILE
@@ -197,7 +201,11 @@ feature -- File Metadata
 
 feature -- Read Operations
 
-	read_text: STRING_32
+	read_text,
+	get_content,
+	load,
+	read_all,
+	content: STRING_32
 			-- Read entire file as text (UTF-8 default).
 		local
 			l_file: PLAIN_TEXT_FILE
@@ -229,7 +237,10 @@ feature -- Read Operations
 			end
 		end
 
-	read_bytes: ARRAY [NATURAL_8]
+	read_bytes,
+	get_binary,
+	load_binary,
+	binary_content: ARRAY [NATURAL_8]
 			-- Read entire file as bytes.
 		local
 			l_file: RAW_FILE
@@ -256,7 +267,10 @@ feature -- Read Operations
 			end
 		end
 
-	read_lines: ARRAYED_LIST [STRING_32]
+	read_lines,
+	get_lines,
+	load_lines,
+	lines: ARRAYED_LIST [STRING_32]
 			-- Read all lines.
 		local
 			l_file: PLAIN_TEXT_FILE
@@ -283,7 +297,11 @@ feature -- Read Operations
 
 feature -- Write Operations
 
-	write_text (a_content: READABLE_STRING_GENERAL): BOOLEAN
+	write_text,
+	put_content,
+	save,
+	write_all,
+	set_content (a_content: READABLE_STRING_GENERAL): BOOLEAN
 			-- Write content to file (overwrites). Returns success.
 		local
 			l_file: PLAIN_TEXT_FILE
@@ -301,7 +319,9 @@ feature -- Write Operations
 			end
 		end
 
-	write_bytes (a_bytes: ARRAY [NATURAL_8]): BOOLEAN
+	write_bytes,
+	put_binary,
+	save_binary (a_bytes: ARRAY [NATURAL_8]): BOOLEAN
 			-- Write bytes to file (overwrites). Returns success.
 		local
 			l_file: RAW_FILE
@@ -408,7 +428,9 @@ feature -- Write Operations
 
 feature -- File Operations
 
-	copy_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+	copy_to,
+	copy_file,
+	duplicate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
 			-- Copy file to destination. Returns success.
 		local
 			l_src, l_dest: RAW_FILE
@@ -432,7 +454,9 @@ feature -- File Operations
 			end
 		end
 
-	move_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+	move_to,
+	move,
+	relocate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
 			-- Move file to destination. Returns success.
 		local
 			l_file: RAW_FILE
@@ -459,7 +483,9 @@ feature -- File Operations
 			Result := move_to (l_new_path)
 		end
 
-	delete: BOOLEAN
+	delete,
+	remove,
+	unlink: BOOLEAN
 			-- Delete file. Returns success.
 		local
 			l_file: RAW_FILE
@@ -496,7 +522,10 @@ feature -- File Operations
 
 feature -- Directory Operations
 
-	entries: ARRAYED_LIST [STRING_32]
+	entries,
+	list,
+	contents,
+	children: ARRAYED_LIST [STRING_32]
 			-- All entries in directory.
 		local
 			l_dir: DIRECTORY
@@ -862,7 +891,9 @@ feature -- Temporary File Support
 
 feature -- Error Handling
 
-	has_error: BOOLEAN
+	has_error,
+	failed,
+	error_occurred: BOOLEAN
 			-- Did last operation fail?
 		do
 			Result := not last_error.is_empty
