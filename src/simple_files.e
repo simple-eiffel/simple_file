@@ -245,10 +245,10 @@ feature -- Temporary Files
 			-- Generate unique temp file path with prefix.
 		local
 			l_rand: RANDOM
-			l_time: TIME
+			l_time: SIMPLE_DATE_TIME
 		do
 			create l_time.make_now
-			create l_rand.set_seed (l_time.compact_time)
+			create l_rand.set_seed (l_time.to_timestamp.to_integer)
 			l_rand.forth
 			Result := temp_directory.twin
 			Result.append_character ({OPERATING_ENVIRONMENT}.directory_separator)
