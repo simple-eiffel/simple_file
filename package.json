@@ -1,0 +1,9 @@
+{
+  "name": "simple_file",
+  "version": "0.1.0",
+  "description": "Simple file and directory operations wrapper",
+  "author": "Larry Rix",
+  "license": "MIT",
+  "category": "platform",
+  "keywords": ["file", "io", "filesystem", "directory"]
+}
