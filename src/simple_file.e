@@ -233,7 +233,7 @@ feature -- Read Operations
 				end
 				l_file.close
 			else
-				set_error ("File not readable: " + internal_path.name)
+				set_error ("File not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -263,7 +263,7 @@ feature -- Read Operations
 				end
 				l_file.close
 			else
-				set_error ("File not readable: " + internal_path.name)
+				set_error ("File not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -291,7 +291,7 @@ feature -- Read Operations
 				end
 				l_file.close
 			else
-				set_error ("File not readable: " + internal_path.name)
+				set_error ("File not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -315,7 +315,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("Cannot write to: " + internal_path.name)
+				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -342,7 +342,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("Cannot write to: " + internal_path.name)
+				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -369,7 +369,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("Cannot write to: " + internal_path.name)
+				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -387,7 +387,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("Cannot append to: " + internal_path.name)
+				set_error ("Cannot append to: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -406,7 +406,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("Cannot append to: " + internal_path.name)
+				set_error ("Cannot append to: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -422,7 +422,7 @@ feature -- Write Operations
 				l_file.close
 				Result := True
 			else
-				set_error ("File does not exist: " + internal_path.name)
+				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -447,10 +447,10 @@ feature -- File Operations
 					l_dest.close
 					Result := True
 				else
-					set_error ("Cannot write to destination: " + a_destination.to_string_32)
+					set_error ("Cannot write to destination: " + a_destination.to_string_8)
 				end
 			else
-				set_error ("Source file not readable: " + internal_path.name)
+				set_error ("Source file not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -468,7 +468,7 @@ feature -- File Operations
 				internal_path := create {PATH}.make_from_string (a_destination.to_string_32)
 				Result := True
 			else
-				set_error ("File does not exist: " + internal_path.name)
+				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -496,7 +496,7 @@ feature -- File Operations
 				l_file.delete
 				Result := True
 			else
-				set_error ("File does not exist: " + internal_path.name)
+				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -513,7 +513,7 @@ feature -- File Operations
 					l_file.close
 					Result := True
 				else
-					set_error ("Cannot create file: " + internal_path.name)
+					set_error ("Cannot create file: " + internal_path.name.to_string_8)
 				end
 			else
 				Result := True -- Already exists
@@ -547,7 +547,7 @@ feature -- Directory Operations
 				end
 				l_dir.close
 			else
-				set_error ("Directory does not exist: " + internal_path.name)
+				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -579,7 +579,7 @@ feature -- Directory Operations
 				end
 				l_dir.close
 			else
-				set_error ("Directory does not exist: " + internal_path.name)
+				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -611,7 +611,7 @@ feature -- Directory Operations
 				end
 				l_dir.close
 			else
-				set_error ("Directory does not exist: " + internal_path.name)
+				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -633,7 +633,7 @@ feature -- Directory Operations
 			loop
 				l_file := l_files.i_th (i)
 				if l_file.as_lower.ends_with (l_ext) or else
-				   l_file.as_lower.ends_with ("." + l_ext) then
+				   l_file.as_lower.ends_with ("." + l_ext.to_string_8) then
 					Result.extend (l_file)
 				end
 				i := i + 1
@@ -651,7 +651,7 @@ feature -- Directory Operations
 				l_dir.create_dir
 				Result := l_dir.exists
 				if not Result then
-					set_error ("Failed to create directory: " + internal_path.name)
+					set_error ("Failed to create directory: " + internal_path.name.to_string_8)
 				end
 			else
 				Result := True -- Already exists
@@ -669,7 +669,7 @@ feature -- Directory Operations
 				l_dir.recursive_create_dir
 				Result := l_dir.exists
 				if not Result then
-					set_error ("Failed to create directory: " + internal_path.name)
+					set_error ("Failed to create directory: " + internal_path.name.to_string_8)
 				end
 			else
 				Result := True -- Already exists
@@ -687,10 +687,10 @@ feature -- Directory Operations
 				l_dir.delete
 				Result := not l_dir.exists
 				if not Result then
-					set_error ("Failed to delete directory (not empty?): " + internal_path.name)
+					set_error ("Failed to delete directory (not empty?): " + internal_path.name.to_string_8)
 				end
 			else
-				set_error ("Directory does not exist: " + internal_path.name)
+				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -705,10 +705,10 @@ feature -- Directory Operations
 				l_dir.recursive_delete
 				Result := not l_dir.exists
 				if not Result then
-					set_error ("Failed to delete directory: " + internal_path.name)
+					set_error ("Failed to delete directory: " + internal_path.name.to_string_8)
 				end
 			else
-				set_error ("Directory does not exist: " + internal_path.name)
+				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -734,7 +734,7 @@ feature -- Streaming Operations (for large files)
 				end
 				l_file.close
 			else
-				set_error ("File not readable: " + internal_path.name)
+				set_error ("File not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -765,7 +765,7 @@ feature -- Streaming Operations (for large files)
 				end
 				l_file.close
 			else
-				set_error ("File not readable: " + internal_path.name)
+				set_error ("File not readable: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -847,7 +847,7 @@ feature -- Permission Helpers
 					set_error ("Cannot change permissions (platform-specific)")
 				end
 			else
-				set_error ("File does not exist: " + internal_path.name)
+				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
@@ -866,7 +866,7 @@ feature -- Permission Helpers
 					set_error ("Cannot change permissions (platform-specific)")
 				end
 			else
-				set_error ("File does not exist: " + internal_path.name)
+				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
 		end
 
