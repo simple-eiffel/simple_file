@@ -64,6 +64,44 @@ feature {NONE} -- Initialization
 			end
 		end
 
+feature -- Model Queries (for contracts)
+
+	path_model: MML_SEQUENCE [CHARACTER_32]
+			-- Model of the path as character sequence.
+		local
+			l_name: STRING_32
+			l_seq: MML_SEQUENCE [CHARACTER_32]
+			i: INTEGER
+		do
+			l_name := internal_path.name
+			create l_seq
+			from i := 1 until i > l_name.count loop
+				l_seq := l_seq & l_name.item (i)
+				i := i + 1
+			end
+			Result := l_seq
+		ensure
+			count_matches: Result.count = internal_path.name.count
+		end
+
+	components_model: MML_SEQUENCE [STRING_32]
+			-- Model of path components as sequence of strings.
+		local
+			l_parts: LIST [IMMUTABLE_STRING_32]
+			l_seq: MML_SEQUENCE [STRING_32]
+			l_sep: CHARACTER_32
+		do
+			l_sep := {OPERATING_ENVIRONMENT}.directory_separator
+			l_parts := internal_path.name.split (l_sep)
+			create l_seq
+			across l_parts as ic loop
+				if not ic.is_empty then
+					l_seq := l_seq & ic.to_string_32
+				end
+			end
+			Result := l_seq
+		end
+
 feature -- Fluent Building
 
 	add (a_component: READABLE_STRING_GENERAL): SIMPLE_PATH
@@ -71,12 +109,17 @@ feature -- Fluent Building
 		do
 			internal_path := internal_path.extended (a_component.to_string_32)
 			Result := Current
+		ensure
+			result_is_current: Result = Current
+			path_extended: path_model.count >= old path_model.count
 		end
 
 	joined alias "/" (a_component: READABLE_STRING_GENERAL): SIMPLE_PATH
 			-- Add path component (alias for add). Returns self for chaining.
 		do
 			Result := add (a_component)
+		ensure
+			result_is_current: Result = Current
 		end
 
 	up: SIMPLE_PATH
@@ -84,6 +127,8 @@ feature -- Fluent Building
 		do
 			internal_path := internal_path.parent
 			Result := Current
+		ensure
+			result_is_current: Result = Current
 		end
 
 	with_extension (a_ext: READABLE_STRING_GENERAL): SIMPLE_PATH
@@ -295,7 +340,7 @@ feature {NONE} -- Implementation
 			-- Internal path storage.
 
 invariant
-	path_not_void: internal_path /= Void
+	path_model_consistent: path_model.count = internal_path.name.count
 
 note
 	copyright: "Copyright (c) 2024-2025, Larry Rix"

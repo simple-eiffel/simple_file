@@ -22,6 +22,8 @@ feature {NONE} -- Initialization
 			reset_error
 		ensure
 			path_set: not internal_path.is_empty
+			path_model_matches: path_model.count = a_path.count
+			no_error: not has_error
 		end
 
 	make_with_path (a_path: PATH)
@@ -33,6 +35,100 @@ feature {NONE} -- Initialization
 			reset_error
 		ensure
 			path_set: internal_path = a_path
+			no_error: not has_error
+		end
+
+feature -- Model Queries (for contracts)
+
+	path_model: MML_SEQUENCE [CHARACTER_32]
+			-- Model of the path as character sequence.
+		local
+			l_name: STRING_32
+			l_seq: MML_SEQUENCE [CHARACTER_32]
+			i: INTEGER
+		do
+			l_name := internal_path.name
+			create l_seq
+			from i := 1 until i > l_name.count loop
+				l_seq := l_seq & l_name.item (i)
+				i := i + 1
+			end
+			Result := l_seq
+		ensure
+			count_matches: Result.count = internal_path.name.count
+		end
+
+	bytes_model: MML_SEQUENCE [NATURAL_8]
+			-- Model of file content as byte sequence.
+			-- Empty if file doesn't exist or isn't readable.
+		local
+			l_file: RAW_FILE
+			l_seq: MML_SEQUENCE [NATURAL_8]
+		do
+			create l_seq
+			create l_file.make_with_path (internal_path)
+			if l_file.exists and then l_file.is_readable then
+				l_file.open_read
+				from until l_file.end_of_file loop
+					l_file.read_natural_8
+					if not l_file.end_of_file then
+						l_seq := l_seq & l_file.last_natural_8
+					end
+				end
+				l_file.close
+			end
+			Result := l_seq
+		end
+
+	lines_model: MML_SEQUENCE [STRING_32]
+			-- Model of file content as sequence of lines.
+			-- Empty if file doesn't exist or isn't readable.
+		local
+			l_file: PLAIN_TEXT_FILE
+			l_seq: MML_SEQUENCE [STRING_32]
+		do
+			create l_seq
+			create l_file.make_with_path (internal_path)
+			if l_file.exists and then l_file.is_readable then
+				l_file.open_read
+				l_file.set_utf8_encoding
+				from
+					l_file.read_line
+				until
+					l_file.exhausted
+				loop
+					l_seq := l_seq & l_file.last_string.to_string_32
+					l_file.read_line
+				end
+				l_file.close
+			end
+			Result := l_seq
+		end
+
+	entries_model: MML_SET [STRING_32]
+			-- Model of directory entries as a set.
+			-- Empty if not a directory or doesn't exist.
+		local
+			l_dir: DIRECTORY
+			l_set: MML_SET [STRING_32]
+		do
+			create l_set
+			create l_dir.make_with_path (internal_path)
+			if l_dir.exists then
+				l_dir.open_read
+				from
+					l_dir.readentry
+				until
+					not attached l_dir.last_entry_32 as l_entry
+				loop
+					if not l_entry.same_string (".") and not l_entry.same_string ("..") then
+						l_set := l_set & l_entry
+					end
+					l_dir.readentry
+				end
+				l_dir.close
+			end
+			Result := l_set
 		end
 
 feature -- File Status
@@ -317,6 +413,10 @@ feature -- Write Operations
 			else
 				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	write_bytes,
@@ -344,6 +444,11 @@ feature -- Write Operations
 			else
 				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_size: Result implies size = a_bytes.count.to_integer_64
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	write_lines (a_lines: LIST [READABLE_STRING_GENERAL]): BOOLEAN
@@ -371,6 +476,11 @@ feature -- Write Operations
 			else
 				set_error ("Cannot write to: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_line_count: Result implies lines_model.count = a_lines.count
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	append_text (a_content: READABLE_STRING_GENERAL): BOOLEAN
@@ -389,6 +499,11 @@ feature -- Write Operations
 			else
 				set_error ("Cannot append to: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			size_increased: Result implies size >= old size
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	append_line (a_line: READABLE_STRING_GENERAL): BOOLEAN
@@ -408,6 +523,11 @@ feature -- Write Operations
 			else
 				set_error ("Cannot append to: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			line_count_increased: Result implies lines_model.count >= old lines_model.count
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	clear: BOOLEAN
@@ -424,6 +544,11 @@ feature -- Write Operations
 			else
 				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_empty: Result implies size = 0
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 feature -- File Operations
@@ -432,6 +557,8 @@ feature -- File Operations
 	copy_file,
 	duplicate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
 			-- Copy file to destination. Returns success.
+		require
+			destination_not_empty: not a_destination.is_empty
 		local
 			l_src, l_dest: RAW_FILE
 		do
@@ -452,12 +579,19 @@ feature -- File Operations
 			else
 				set_error ("Source file not readable: " + internal_path.name.to_string_8)
 			end
+		ensure
+			source_unchanged: exists = old exists
+			source_content_unchanged: bytes_model |=| old bytes_model
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	move_to,
 	move,
 	relocate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
 			-- Move file to destination. Returns success.
+		require
+			destination_not_empty: not a_destination.is_empty
 		local
 			l_file: RAW_FILE
 		do
@@ -470,10 +604,16 @@ feature -- File Operations
 			else
 				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_path: Result implies path_string.same_string (a_destination.to_string_32)
+			failure_implies_error: not Result implies has_error
 		end
 
 	rename_to (a_new_name: READABLE_STRING_GENERAL): BOOLEAN
 			-- Rename file (same directory). Returns success.
+		require
+			name_not_empty: not a_new_name.is_empty
 		local
 			l_new_path: STRING_32
 		do
@@ -481,6 +621,10 @@ feature -- File Operations
 			l_new_path.append_character ({OPERATING_ENVIRONMENT}.directory_separator)
 			l_new_path.append_string_general (a_new_name)
 			Result := move_to (l_new_path)
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_name: Result implies file_name.same_string (a_new_name.to_string_32)
+			failure_implies_error: not Result implies has_error
 		end
 
 	delete,
@@ -498,6 +642,10 @@ feature -- File Operations
 			else
 				set_error ("File does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_gone: Result implies not exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	create_if_missing: BOOLEAN
@@ -518,6 +666,10 @@ feature -- File Operations
 			else
 				Result := True -- Already exists
 			end
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 feature -- Directory Operations
@@ -549,6 +701,9 @@ feature -- Directory Operations
 			else
 				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			result_count_matches_model: Result.count = entries_model.count
+			path_unchanged: path_model |=| old path_model
 		end
 
 	files: ARRAYED_LIST [STRING_32]
@@ -656,6 +811,10 @@ feature -- Directory Operations
 			else
 				Result := True -- Already exists
 			end
+		ensure
+			success_implies_exists: Result implies is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	create_directory_recursive: BOOLEAN
@@ -674,6 +833,10 @@ feature -- Directory Operations
 			else
 				Result := True -- Already exists
 			end
+		ensure
+			success_implies_exists: Result implies is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	delete_directory: BOOLEAN
@@ -692,6 +855,10 @@ feature -- Directory Operations
 			else
 				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_gone: Result implies not is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 	delete_directory_recursive: BOOLEAN
@@ -710,6 +877,10 @@ feature -- Directory Operations
 			else
 				set_error ("Directory does not exist: " + internal_path.name.to_string_8)
 			end
+		ensure
+			success_implies_gone: Result implies not is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
 		end
 
 feature -- Streaming Operations (for large files)
@@ -920,8 +1091,8 @@ feature {NONE} -- Implementation
 		end
 
 invariant
-	path_not_void: internal_path /= Void
-	error_not_void: last_error /= Void
+	path_not_empty: not internal_path.is_empty
+	path_model_consistent: path_model.count = internal_path.name.count
 
 note
 	copyright: "Copyright (c) 2024-2025, Larry Rix"
