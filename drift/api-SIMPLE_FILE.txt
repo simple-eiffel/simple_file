@@ -1,0 +1,720 @@
+note
+	description: "Simple file and directory operations wrapper"
+	author: "Larry Rix"
+	date: "$Date$"
+	revision: "$Revision$"
+
+class interface
+	SIMPLE_FILE
+
+create 
+	make (a_path: READABLE_STRING_GENERAL)
+			-- Create file object for `a_path`.
+		require
+			path_not_empty: not a_path.is_empty
+		ensure
+			path_set: not internal_path.is_empty
+			path_model_matches: path_model.count = a_path.count
+			no_error: not has_error
+
+	make_with_path (a_path: PATH)
+			-- Create file object for `a_path`.
+		require
+			path_not_empty: not a_path.is_empty
+		ensure
+			path_set: internal_path = a_path
+			no_error: not has_error
+
+feature -- Access
+
+	generating_type: TYPE [detachable SIMPLE_FILE]
+			-- Type of current object
+			-- (type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generating_type_not_void: Result /= Void
+
+	generator: STRING_8
+			-- Name of current object's generating class
+			-- (base class of the type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generator_not_void: Result /= Void
+			generator_not_empty: not Result.is_empty
+	
+feature -- Comparison
+
+	frozen deep_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void
+			-- or attached to isomorphic object structures?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			shallow_implies_deep: standard_equal (a, b) implies Result
+			both_or_none_void: (a = Void) implies (Result = (b = Void))
+			same_type: (Result and (a /= Void)) implies (b /= Void and then a.same_type (b))
+			symmetric: Result implies deep_equal (b, a)
+
+	frozen equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached
+			-- to objects considered equal?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.is_equal (b))
+
+	frozen is_deep_equal alias "≡≡≡" (other: SIMPLE_FILE): BOOLEAN
+			-- Are `Current` and `other` attached to isomorphic object structures?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			shallow_implies_deep: standard_is_equal (other) implies Result
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.is_deep_equal (Current)
+
+	is_equal (other: SIMPLE_FILE): BOOLEAN
+			-- Is `other` attached to an object considered
+			-- equal to current object?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			symmetric: Result implies other ~ Current
+			consistent: standard_is_equal (other) implies Result
+
+	frozen standard_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached to
+			-- field-by-field identical objects of the same type?
+			-- Always uses default object comparison criterion.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.standard_is_equal (b))
+
+	frozen standard_is_equal alias "≜" (other: SIMPLE_FILE): BOOLEAN
+			-- Is `other` attached to an object of the same type
+			-- as current object, and field-by-field identical to it?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.standard_is_equal (Current)
+	
+feature -- Status report
+
+	conforms_to (other: ANY): BOOLEAN
+			-- Does type of current object conform to type
+			-- of `other` (as per Eiffel: The Language, chapter 13)?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+
+	same_type (other: ANY): BOOLEAN
+			-- Is type of current object identical to type of `other`?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			definition: Result = (conforms_to (other) and other.conforms_to (Current))
+	
+feature -- Duplication
+
+	copy (other: SIMPLE_FILE)
+			-- Update current object using fields of object attached
+			-- to `other`, so as to yield equal objects.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_equal: Current ~ other
+
+	frozen deep_copy (other: SIMPLE_FILE)
+			-- Effect equivalent to that of:
+			--		`copy` (`other` . `deep_twin`)
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			deep_equal: deep_equal (Current, other)
+
+	frozen deep_twin: SIMPLE_FILE
+			-- New object structure recursively duplicated from Current.
+			-- (from ANY)
+		ensure -- from ANY
+			deep_twin_not_void: Result /= Void
+			deep_equal: deep_equal (Current, Result)
+
+	frozen standard_copy (other: SIMPLE_FILE)
+			-- Copy every field of `other` onto corresponding field
+			-- of current object.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_standard_equal: standard_is_equal (other)
+
+	frozen standard_twin: SIMPLE_FILE
+			-- New object field-by-field identical to `other`.
+			-- Always uses default copying semantics.
+			-- (from ANY)
+		ensure -- from ANY
+			standard_twin_not_void: Result /= Void
+			equal: standard_equal (Result, Current)
+
+	frozen twin: SIMPLE_FILE
+			-- New object equal to `Current`
+			-- `twin` calls `copy`; to change copying/twinning semantics, redefine `copy`.
+			-- (from ANY)
+		ensure -- from ANY
+			twin_not_void: Result /= Void
+			is_equal: Result ~ Current
+	
+feature -- Basic operations
+
+	frozen default: detachable SIMPLE_FILE
+			-- Default value of object's type
+			-- (from ANY)
+
+	frozen default_pointer: POINTER
+			-- Default value of type `POINTER`
+			-- (Avoid the need to write `p`.`default` for
+			-- some `p` of type `POINTER`.)
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	default_rescue
+			-- Process exception for routines with no Rescue clause.
+			-- (Default: do nothing.)
+			-- (from ANY)
+
+	frozen do_nothing
+			-- Execute a null action.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+	
+feature -- Directory Operations
+
+	children: ARRAYED_LIST [STRING_32]
+			-- All entries in directory.
+			-- Was declared in {SIMPLE_FILE} as synonym of `entries`, `list` and `contents`.
+		ensure
+			result_count_matches_model: Result.count = entries_model.count
+			path_unchanged: path_model |=| old path_model
+
+	contents: ARRAYED_LIST [STRING_32]
+			-- All entries in directory.
+			-- Was declared in {SIMPLE_FILE} as synonym of `entries`, `list` and `children`.
+		ensure
+			result_count_matches_model: Result.count = entries_model.count
+			path_unchanged: path_model |=| old path_model
+
+	create_directory: BOOLEAN
+			-- Create directory. Returns success.
+		ensure
+			success_implies_exists: Result implies is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	create_directory_recursive: BOOLEAN
+			-- Create directory and parents. Returns success.
+		ensure
+			success_implies_exists: Result implies is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	delete_directory: BOOLEAN
+			-- Delete empty directory. Returns success.
+		ensure
+			success_implies_gone: Result implies not is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	delete_directory_recursive: BOOLEAN
+			-- Delete directory and contents. Returns success.
+		ensure
+			success_implies_gone: Result implies not is_directory
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	directories: ARRAYED_LIST [STRING_32]
+			-- Only subdirectories in directory.
+
+	entries: ARRAYED_LIST [STRING_32]
+			-- All entries in directory.
+			-- Was declared in {SIMPLE_FILE} as synonym of `list`, `contents` and `children`.
+		ensure
+			result_count_matches_model: Result.count = entries_model.count
+			path_unchanged: path_model |=| old path_model
+
+	files: ARRAYED_LIST [STRING_32]
+			-- Only files in directory (not subdirectories).
+
+	files_with_extension (a_ext: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
+			-- Files with given extension.
+
+	list: ARRAYED_LIST [STRING_32]
+			-- All entries in directory.
+			-- Was declared in {SIMPLE_FILE} as synonym of `entries`, `contents` and `children`.
+		ensure
+			result_count_matches_model: Result.count = entries_model.count
+			path_unchanged: path_model |=| old path_model
+	
+feature -- Error Handling
+
+	error_occurred: BOOLEAN
+			-- Did last operation fail?
+			-- Was declared in {SIMPLE_FILE} as synonym of `has_error` and `failed`.
+
+	failed: BOOLEAN
+			-- Did last operation fail?
+			-- Was declared in {SIMPLE_FILE} as synonym of `has_error` and `error_occurred`.
+
+	has_error: BOOLEAN
+			-- Did last operation fail?
+			-- Was declared in {SIMPLE_FILE} as synonym of `failed` and `error_occurred`.
+
+	last_error: STRING_32
+			-- Description of last error, empty if none.
+	
+feature -- File Metadata
+
+	accessed_timestamp: INTEGER_32
+			-- Access timestamp (seconds since epoch).
+
+	base_name: STRING_32
+			-- File name without extension.
+
+	byte_count: INTEGER_64
+			-- Size in bytes (0 if file doesn't exist).
+			-- Was declared in {SIMPLE_FILE} as synonym of `size` and `length`.
+
+	extension: STRING_32
+			-- File extension (e.g., "txt"), empty if none.
+
+	file_name: STRING_32
+			-- Full file name with extension.
+
+	length: INTEGER_64
+			-- Size in bytes (0 if file doesn't exist).
+			-- Was declared in {SIMPLE_FILE} as synonym of `size` and `byte_count`.
+
+	modified_timestamp: INTEGER_32
+			-- Modification timestamp (seconds since epoch).
+
+	parent_path: STRING_32
+			-- Parent directory path.
+
+	path: PATH
+			-- Full PATH object.
+
+	path_string: STRING_32
+			-- Full path as string.
+
+	size: INTEGER_64
+			-- Size in bytes (0 if file doesn't exist).
+			-- Was declared in {SIMPLE_FILE} as synonym of `length` and `byte_count`.
+	
+feature -- File Operations
+
+	copy_file (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Copy file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `copy_to` and `duplicate_to`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			source_unchanged: exists = old exists
+			source_content_unchanged: bytes_model |=| old bytes_model
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	copy_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Copy file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `copy_file` and `duplicate_to`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			source_unchanged: exists = old exists
+			source_content_unchanged: bytes_model |=| old bytes_model
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	create_if_missing: BOOLEAN
+			-- Create empty file if it doesn't exist. Returns success.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	delete: BOOLEAN
+			-- Delete file. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `remove` and `unlink`.
+		ensure
+			success_implies_gone: Result implies not exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	duplicate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Copy file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `copy_to` and `copy_file`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			source_unchanged: exists = old exists
+			source_content_unchanged: bytes_model |=| old bytes_model
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	move (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Move file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `move_to` and `relocate_to`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_path: Result implies path_string.same_string (a_destination.to_string_32)
+			failure_implies_error: not Result implies has_error
+
+	move_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Move file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `move` and `relocate_to`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_path: Result implies path_string.same_string (a_destination.to_string_32)
+			failure_implies_error: not Result implies has_error
+
+	relocate_to (a_destination: READABLE_STRING_GENERAL): BOOLEAN
+			-- Move file to destination. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `move_to` and `move`.
+		require
+			destination_not_empty: not a_destination.is_empty
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_path: Result implies path_string.same_string (a_destination.to_string_32)
+			failure_implies_error: not Result implies has_error
+
+	remove: BOOLEAN
+			-- Delete file. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `delete` and `unlink`.
+		ensure
+			success_implies_gone: Result implies not exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	rename_to (a_new_name: READABLE_STRING_GENERAL): BOOLEAN
+			-- Rename file (same directory). Returns success.
+		require
+			name_not_empty: not a_new_name.is_empty
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_new_name: Result implies file_name.same_string (a_new_name.to_string_32)
+			failure_implies_error: not Result implies has_error
+
+	unlink: BOOLEAN
+			-- Delete file. Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `delete` and `remove`.
+		ensure
+			success_implies_gone: Result implies not exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+	
+feature -- File Status
+
+	exists: BOOLEAN
+			-- Does file or directory exist?
+			-- Was declared in {SIMPLE_FILE} as synonym of `is_present` and `found`.
+
+	found: BOOLEAN
+			-- Does file or directory exist?
+			-- Was declared in {SIMPLE_FILE} as synonym of `exists` and `is_present`.
+
+	is_directory: BOOLEAN
+			-- Is this a directory?
+
+	is_executable: BOOLEAN
+			-- Can file be executed?
+
+	is_file: BOOLEAN
+			-- Is this a regular file (not directory)?
+
+	is_present: BOOLEAN
+			-- Does file or directory exist?
+			-- Was declared in {SIMPLE_FILE} as synonym of `exists` and `found`.
+
+	is_readable: BOOLEAN
+			-- Can file be read?
+
+	is_symlink: BOOLEAN
+			-- Is this a symbolic link?
+
+	is_writable: BOOLEAN
+			-- Can file be written?
+	
+feature -- Model Queries (for contracts)
+
+	bytes_model: MML_SEQUENCE [NATURAL_8]
+			-- Model of file content as byte sequence.
+			-- Empty if file doesn't exist or isn't readable.
+
+	entries_model: MML_SET [STRING_32]
+			-- Model of directory entries as a set.
+			-- Empty if not a directory or doesn't exist.
+
+	lines_model: MML_SEQUENCE [STRING_32]
+			-- Model of file content as sequence of lines.
+			-- Empty if file doesn't exist or isn't readable.
+
+	path_model: MML_SEQUENCE [CHARACTER_32]
+			-- Model of the path as character sequence.
+		ensure
+			count_matches: Result.count = internal_path.name.count
+	
+feature -- Output
+
+	Io: STD_FILES
+			-- Handle to standard file setup
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			io_not_void: Result /= Void
+
+	out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			out_not_void: Result /= Void
+
+	print (o: detachable ANY)
+			-- Write terse external representation of `o`
+			-- on standard output.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	frozen tagged_out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			tagged_out_not_void: Result /= Void
+	
+feature -- Path Transformation
+
+	absolute_path: STRING_32
+			-- Make path absolute.
+
+	normalize: STRING_32
+			-- Normalize path (remove . and ..) without requiring existence.
+
+	resolve: STRING_32
+			-- Canonical absolute path (requires file to exist).
+	
+feature -- Permission Helpers
+
+	make_readable: BOOLEAN
+			-- Make file readable. Returns success.
+			-- Note: Full implementation requires platform-specific code.
+
+	make_writable: BOOLEAN
+			-- Make file writable. Returns success.
+			-- Note: Full implementation requires platform-specific code.
+	
+feature -- Platform
+
+	Operating_environment: OPERATING_ENVIRONMENT
+			-- Objects available from the operating system
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			operating_environment_not_void: Result /= Void
+	
+feature -- Read Operations
+
+	binary_content: ARRAY [NATURAL_8]
+			-- Read entire file as bytes.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_bytes`, `get_binary` and `load_binary`.
+
+	content: STRING_32
+			-- Read entire file as text (UTF-8 default).
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_text`, `get_content`, `load` and `read_all`.
+
+	get_binary: ARRAY [NATURAL_8]
+			-- Read entire file as bytes.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_bytes`, `load_binary` and `binary_content`.
+
+	get_content: STRING_32
+			-- Read entire file as text (UTF-8 default).
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_text`, `load`, `read_all` and `content`.
+
+	get_lines: ARRAYED_LIST [STRING_32]
+			-- Read all lines.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_lines`, `load_lines` and `lines`.
+
+	lines: ARRAYED_LIST [STRING_32]
+			-- Read all lines.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_lines`, `get_lines` and `load_lines`.
+
+	load: STRING_32
+			-- Read entire file as text (UTF-8 default).
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_text`, `get_content`, `read_all` and `content`.
+
+	load_binary: ARRAY [NATURAL_8]
+			-- Read entire file as bytes.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_bytes`, `get_binary` and `binary_content`.
+
+	load_lines: ARRAYED_LIST [STRING_32]
+			-- Read all lines.
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_lines`, `get_lines` and `lines`.
+
+	read_all: STRING_32
+			-- Read entire file as text (UTF-8 default).
+			-- Was declared in {SIMPLE_FILE} as synonym of `read_text`, `get_content`, `load` and `content`.
+
+	read_bytes: ARRAY [NATURAL_8]
+			-- Read entire file as bytes.
+			-- Was declared in {SIMPLE_FILE} as synonym of `get_binary`, `load_binary` and `binary_content`.
+
+	read_lines: ARRAYED_LIST [STRING_32]
+			-- Read all lines.
+			-- Was declared in {SIMPLE_FILE} as synonym of `get_lines`, `load_lines` and `lines`.
+
+	read_text: STRING_32
+			-- Read entire file as text (UTF-8 default).
+			-- Was declared in {SIMPLE_FILE} as synonym of `get_content`, `load`, `read_all` and `content`.
+	
+feature -- Streaming Operations (for large files)
+
+	each_line (a_action: PROCEDURE [STRING_32])
+			-- Iterate lines one at a time (memory efficient).
+
+	read_chunk (a_offset, a_size: INTEGER_32): ARRAY [NATURAL_8]
+			-- Read chunk of bytes at offset (for large binary files).
+	
+feature -- Temporary File Support
+
+	with_temp_file (a_action: PROCEDURE [SIMPLE_FILE])
+			-- Execute action with temp file, auto-delete after.
+	
+feature -- Write Operations
+
+	append_line (a_line: READABLE_STRING_GENERAL): BOOLEAN
+			-- Append line with newline to file. Returns success.
+		ensure
+			success_implies_exists: Result implies exists
+			line_count_increased: Result implies lines_model.count >= old lines_model.count
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	append_text (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Append content to file. Returns success.
+		ensure
+			success_implies_exists: Result implies exists
+			size_increased: Result implies size >= old size
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	clear: BOOLEAN
+			-- Empty the file. Returns success.
+		ensure
+			success_implies_empty: Result implies size = 0
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	put_binary (a_bytes: ARRAY [NATURAL_8]): BOOLEAN
+			-- Write bytes to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_bytes` and `save_binary`.
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_size: Result implies size = a_bytes.count.to_integer_64
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	put_content (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_text`, `save`, `write_all` and `set_content`.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	save (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_text`, `put_content`, `write_all` and `set_content`.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	save_binary (a_bytes: ARRAY [NATURAL_8]): BOOLEAN
+			-- Write bytes to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_bytes` and `put_binary`.
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_size: Result implies size = a_bytes.count.to_integer_64
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	set_content (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_text`, `put_content`, `save` and `write_all`.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	write_all (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `write_text`, `put_content`, `save` and `set_content`.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	write_bytes (a_bytes: ARRAY [NATURAL_8]): BOOLEAN
+			-- Write bytes to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `put_binary` and `save_binary`.
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_size: Result implies size = a_bytes.count.to_integer_64
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	write_lines (a_lines: LIST [READABLE_STRING_GENERAL]): BOOLEAN
+			-- Write lines to file (overwrites). Returns success.
+		ensure
+			success_implies_exists: Result implies exists
+			success_implies_line_count: Result implies lines_model.count = a_lines.count
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+
+	write_text (a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content to file (overwrites). Returns success.
+			-- Was declared in {SIMPLE_FILE} as synonym of `put_content`, `save`, `write_all` and `set_content`.
+		ensure
+			success_implies_exists: Result implies exists
+			failure_implies_error: not Result implies has_error
+			path_unchanged: path_model |=| old path_model
+	
+invariant
+	path_not_empty: not internal_path.is_empty
+	path_model_consistent: path_model.count = internal_path.name.count
+
+		-- from ANY
+	reflexive_equality: standard_is_equal (Current)
+	reflexive_conformance: conforms_to (Current)
+
+note
+	copyright: "Copyright (c) 2024-2025, Larry Rix"
+	license: "MIT License"
+
+end -- class SIMPLE_FILE
+
