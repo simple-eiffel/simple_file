@@ -38,6 +38,18 @@ feature -- Quick Read
 			Result := l_sf.read_text
 		end
 
+	read_text_utf_8 (a_path: READABLE_STRING_GENERAL): STRING_32
+			-- Read entire file decoded from UTF-8, exactly as stored
+			-- (see {SIMPLE_FILE}.read_text_utf_8).
+		require
+			path_not_empty: not a_path.is_empty
+		local
+			l_sf: SIMPLE_FILE
+		do
+			create l_sf.make (a_path)
+			Result := l_sf.read_text_utf_8
+		end
+
 	read_lines (a_path: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
 			-- Read all lines from file.
 		local
@@ -59,12 +71,24 @@ feature -- Quick Read
 feature -- Quick Write
 
 	write_text (a_path, a_content: READABLE_STRING_GENERAL): BOOLEAN
-			-- Write content to file (overwrites).
+			-- Write content to file (overwrites), atomically.
 		local
 			l_sf: SIMPLE_FILE
 		do
 			create l_sf.make (a_path)
 			Result := l_sf.write_text (a_content)
+		end
+
+	write_text_utf_8 (a_path, a_content: READABLE_STRING_GENERAL): BOOLEAN
+			-- Write content as UTF-8 exactly, atomically (overwrites)
+			-- (see {SIMPLE_FILE}.write_text_utf_8).
+		require
+			path_not_empty: not a_path.is_empty
+		local
+			l_sf: SIMPLE_FILE
+		do
+			create l_sf.make (a_path)
+			Result := l_sf.write_text_utf_8 (a_content)
 		end
 
 	write_lines (a_path: READABLE_STRING_GENERAL; a_lines: LIST [READABLE_STRING_GENERAL]): BOOLEAN
@@ -256,6 +280,214 @@ feature -- Temporary Files
 			Result.append_character ('_')
 			Result.append_string_general (l_rand.item.abs.out)
 			Result.append ({STRING_32} ".tmp")
+		end
+
+feature -- File Names
+
+	file_safe_name (a_text: READABLE_STRING_GENERAL): STRING_32
+			-- `a_text' made usable as one Windows file name:
+			-- each of < > : " / \ | ? *, each control character (U+0000 to
+			-- U+001F) and each surrogate or out-of-range code becomes '_';
+			-- trailing dots and spaces are dropped (Windows would drop them
+			-- silently); a reserved device name (CON, PRN, AUX, NUL, COM0-COM9,
+			-- LPT0-LPT9, also COM and LPT with a superscript 1, 2 or 3; in any
+			-- case, with or without an extension) gets '_' after its stem
+			-- ("con.txt" becomes "con_.txt"); a name longer than
+			-- `Max_file_name_length' UTF-16 units is cut, keeping an extension
+			-- of up to 16 characters; an empty result becomes "_".
+			-- Not reversible: different texts can give the same name, so add
+			-- an id where names must be unique.
+		local
+			l_code: NATURAL_32
+			i: INTEGER
+		do
+			create Result.make (a_text.count)
+			from
+				i := 1
+			until
+				i > a_text.count
+			loop
+				l_code := a_text.code (i)
+				if l_code < 32 or l_code > 0x10FFFF or (0xD800 <= l_code and l_code <= 0xDFFF) or Reserved_characters.has (l_code.to_character_32) then
+					Result.append_character (Replacement_character)
+				else
+					Result.append_code (l_code)
+				end
+				i := i + 1
+			end
+			drop_trailing_dots_and_spaces (Result)
+			if Result.is_empty then
+				Result.append_character (Replacement_character)
+			end
+			if is_reserved_device_name (Result) then
+				Result.insert_character (Replacement_character, stem_end (Result) + 1)
+			end
+			if utf_16_length (Result) > Max_file_name_length then
+				cut_to_length (Result)
+				drop_trailing_dots_and_spaces (Result)
+				if Result.is_empty then
+					Result.append_character (Replacement_character)
+				end
+			end
+		ensure
+			safe: is_file_safe_name (Result)
+			safe_text_unchanged: is_file_safe_name (a_text) implies Result.same_string_general (a_text)
+		end
+
+	is_file_safe_name (a_name: READABLE_STRING_GENERAL): BOOLEAN
+			-- Can `a_name' be used as one Windows file name as it stands:
+			-- not empty, none of the characters `file_safe_name' replaces, no
+			-- trailing dot or space, not a reserved device name, at most
+			-- `Max_file_name_length' UTF-16 units?
+		local
+			l_code: NATURAL_32
+			l_last: CHARACTER_32
+			l_name: STRING_32
+			i: INTEGER
+		do
+			if not a_name.is_empty then
+				l_name := a_name.to_string_32
+				Result := True
+				from
+					i := 1
+				until
+					i > l_name.count or not Result
+				loop
+					l_code := l_name.code (i)
+					Result := not (l_code < 32 or l_code > 0x10FFFF or (0xD800 <= l_code and l_code <= 0xDFFF) or Reserved_characters.has (l_name [i]))
+					i := i + 1
+				end
+				if Result then
+					l_last := l_name [l_name.count]
+					Result := l_last /= '.' and l_last /= ' ' and then not is_reserved_device_name (l_name) and then utf_16_length (l_name) <= Max_file_name_length
+				end
+			end
+		end
+
+	Max_file_name_length: INTEGER = 255
+			-- Longest file name NTFS accepts, in UTF-16 units.
+
+feature {NONE} -- File name implementation
+
+	Reserved_characters: STRING_32
+			-- Characters Windows forbids in a file name.
+		once
+			Result := {STRING_32} "<>:%"/\|?*"
+		end
+
+	Replacement_character: CHARACTER_32 = '_'
+			-- Stands in for each forbidden character.
+
+	Reserved_device_names: ARRAYED_LIST [STRING_32]
+			-- Device names Windows reserves, in upper case: CON, PRN, AUX,
+			-- NUL, COM0-COM9, LPT0-LPT9, and COM and LPT followed by a
+			-- superscript 1, 2 or 3 (U+00B9, U+00B2, U+00B3).
+		local
+			l_name: STRING_32
+		once
+			create Result.make (30)
+			Result.extend ({STRING_32} "CON")
+			Result.extend ({STRING_32} "PRN")
+			Result.extend ({STRING_32} "AUX")
+			Result.extend ({STRING_32} "NUL")
+			across << {STRING_32} "COM", {STRING_32} "LPT" >> as ic_port loop
+				across << 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0xB9, 0xB2, 0xB3 >> as ic_digit loop
+					l_name := ic_port.twin
+					l_name.append_code (ic_digit.to_natural_32)
+					Result.extend (l_name)
+				end
+			end
+		ensure
+			thirty_names: Result.count = 30
+		end
+
+	stem_end (a_name: READABLE_STRING_32): INTEGER
+			-- Index of the last character before the first dot of `a_name'
+			-- (its whole count if it has no dot).
+		do
+			Result := a_name.index_of ('.', 1) - 1
+			if Result < 0 then
+				Result := a_name.count
+			end
+		ensure
+			in_range: 0 <= Result and Result <= a_name.count
+		end
+
+	is_reserved_device_name (a_name: READABLE_STRING_32): BOOLEAN
+			-- Is the stem of `a_name' (before its first dot, trailing spaces
+			-- ignored) a reserved device name, in any case?
+		local
+			l_stem: STRING_32
+		do
+			l_stem := a_name.substring (1, stem_end (a_name)).to_string_32
+			l_stem.right_adjust
+			l_stem.to_upper
+			Result := across Reserved_device_names as ic some ic.same_string (l_stem) end
+		end
+
+	drop_trailing_dots_and_spaces (a_name: STRING_32)
+			-- Remove dots and spaces from the end of `a_name'.
+		do
+			from
+			until
+				a_name.is_empty or else not (a_name [a_name.count] = '.' or a_name [a_name.count] = ' ')
+			loop
+				a_name.remove_tail (1)
+			end
+		ensure
+			no_trailing: not a_name.is_empty implies (a_name [a_name.count] /= '.' and a_name [a_name.count] /= ' ')
+		end
+
+	utf_16_length (a_name: READABLE_STRING_32): INTEGER
+			-- Length of `a_name' in UTF-16 units.
+		local
+			i: INTEGER
+		do
+			from
+				i := 1
+			until
+				i > a_name.count
+			loop
+				if a_name.code (i) > 0xFFFF then
+					Result := Result + 2
+				else
+					Result := Result + 1
+				end
+				i := i + 1
+			end
+		ensure
+			at_least_count: Result >= a_name.count
+		end
+
+	cut_to_length (a_name: STRING_32)
+			-- Cut `a_name' to `Max_file_name_length' UTF-16 units, keeping an
+			-- extension (from the last dot) of up to 16 characters.
+		local
+			l_extension: STRING_32
+			l_dot, l_length: INTEGER
+		do
+			l_dot := a_name.last_index_of ('.', a_name.count)
+			if l_dot > 1 and then a_name.count - l_dot + 1 <= 16 then
+				l_extension := a_name.substring (l_dot, a_name.count)
+				a_name.keep_head (l_dot - 1)
+			else
+				create l_extension.make_empty
+			end
+			from
+				l_length := utf_16_length (a_name) + utf_16_length (l_extension)
+			until
+				l_length <= Max_file_name_length or a_name.is_empty
+			loop
+				if a_name.code (a_name.count) > 0xFFFF then
+					l_length := l_length - 2
+				else
+					l_length := l_length - 1
+				end
+				a_name.remove_tail (1)
+			end
+			a_name.append (l_extension)
+		ensure
+			short_enough: utf_16_length (a_name) <= Max_file_name_length
 		end
 
 note

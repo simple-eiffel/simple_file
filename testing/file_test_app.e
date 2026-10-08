@@ -148,7 +148,7 @@ feature -- Tests
 		do
 			print ("test_write_and_read_bytes: ")
 
-			l_bytes := <<0, 1, 2, 255, 128, 64>>
+			l_bytes := {ARRAY [NATURAL_8]} <<0, 1, 2, 255, 128, 64>>
 			create l_sf.make (temp_file_path ("bytes_test"))
 
 			-- Write
@@ -409,7 +409,7 @@ feature -- Tests
 			assert_true ("parent not empty", not l_files.parent_of (l_path).is_empty)
 
 			-- Join path
-			assert_true ("join not empty", not l_files.join_path (<<"a", "b", "c">>).is_empty)
+			assert_true ("join not empty", not l_files.join_path ({ARRAY [READABLE_STRING_GENERAL]} <<"a", "b", "c">>).is_empty)
 
 			-- Cleanup
 			l_ignore := l_files.delete_file (l_path)

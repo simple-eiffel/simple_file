@@ -113,6 +113,11 @@
                     <td>Modification time (epoch seconds).</td>
                 </tr>
                 <tr>
+                    <td><code>modified_time_100ns</code></td>
+                    <td><code>: INTEGER_64</code></td>
+                    <td>Modification time at full NTFS precision: 100 ns ticks since 1601-01-01 UTC (Windows FILETIME); 0 if missing. <em>1.1.0</em></td>
+                </tr>
+                <tr>
                     <td><code>accessed_timestamp</code></td>
                     <td><code>: INTEGER</code></td>
                     <td>Access time (epoch seconds).</td>
@@ -159,7 +164,12 @@
                 <tr>
                     <td><code>read_text</code></td>
                     <td><code>: STRING_32</code></td>
-                    <td>Read entire file as text.</td>
+                    <td>Read entire file as text, one character per byte (not UTF-8 decoded; CR LF read as LF, final line break dropped). Unchanged from 1.0; use <code>read_text_utf_8</code> for decoded text.</td>
+                </tr>
+                <tr>
+                    <td><code>read_text_utf_8</code></td>
+                    <td><code>: STRING_32</code></td>
+                    <td>Read entire file decoded from UTF-8, exactly as stored (line endings and final line break kept, leading BOM dropped). Invalid bytes become U+FFFD and are reported. <em>1.1.0</em></td>
                 </tr>
                 <tr>
                     <td><code>read_lines</code></td>
@@ -203,17 +213,22 @@
                 <tr>
                     <td><code>write_text</code></td>
                     <td><code>(a_content: STRING_32)</code></td>
-                    <td>Write text (overwrites existing).</td>
+                    <td>Write text (overwrites existing), <strong>atomically</strong>: temp file in the same folder, FlushFileBuffers, MoveFileExW (REPLACE_EXISTING | WRITE_THROUGH). A killed process leaves the old content or the new, never an empty file. UTF-8, LF written as CR LF (as 1.0).</td>
+                </tr>
+                <tr>
+                    <td><code>write_text_utf_8</code></td>
+                    <td><code>(a_content: READABLE_STRING_GENERAL): BOOLEAN</code></td>
+                    <td>Write text as UTF-8 exactly (no line-ending translation), atomically. Counterpart of <code>read_text_utf_8</code>. <em>1.1.0</em></td>
                 </tr>
                 <tr>
                     <td><code>append_text</code></td>
                     <td><code>(a_content: STRING_32)</code></td>
-                    <td>Append text to file.</td>
+                    <td>Append text to file, creating it if missing. Not atomic: an append extends the file in place.</td>
                 </tr>
                 <tr>
                     <td><code>write_lines</code></td>
                     <td><code>(a_lines: LIST [STRING_32])</code></td>
-                    <td>Write list of lines.</td>
+                    <td>Write list of lines (overwrites existing), atomically.</td>
                 </tr>
                 <tr>
                     <td><code>append_lines</code></td>
@@ -223,7 +238,7 @@
                 <tr>
                     <td><code>write_bytes</code></td>
                     <td><code>(a_bytes: ARRAY [NATURAL_8])</code></td>
-                    <td>Write binary data.</td>
+                    <td>Write binary data (overwrites existing), atomically.</td>
                 </tr>
                 <tr>
                     <td><code>create_empty</code></td>
@@ -293,6 +308,11 @@
                     <td><code></code></td>
                     <td>Delete directory and contents.</td>
                 </tr>
+                <tr>
+                    <td><code>remove_stale_temporaries</code></td>
+                    <td><code>: INTEGER</code></td>
+                    <td>Delete the <code>.~sf&lt;pid&gt;_&lt;n&gt;.tmp</code> files that atomic writes of killed processes left in this directory; returns how many. <em>1.1.0</em></td>
+                </tr>
             </table>
 
             <h3>Error Handling</h3>
@@ -311,6 +331,16 @@
                     <td><code>last_error</code></td>
                     <td><code>: STRING_32</code></td>
                     <td>Error message from last operation.</td>
+                </tr>
+                <tr>
+                    <td><code>last_error_code</code></td>
+                    <td><code>: INTEGER</code></td>
+                    <td>Win32 error code behind <code>last_error</code> (5 access denied, 32 sharing violation, ...); 0 if none. <em>1.1.0</em></td>
+                </tr>
+                <tr>
+                    <td><code>is_stream_path</code></td>
+                    <td><code>: BOOLEAN</code></td>
+                    <td>Does the path hold a <code>:</code> other than a drive letter&#39;s (an NTFS alternate data stream)? Every write and create refuses such a path with an error. <em>1.1.0</em></td>
                 </tr>
                 <tr>
                     <td><code>clear_error</code></td>
@@ -369,6 +399,35 @@
                     <td><code>all_directories</code></td>
                     <td><code>: ARRAYED_LIST [SIMPLE_FILE]</code></td>
                     <td>Get all subdirectories.</td>
+                </tr>
+            </table>
+
+            <h3>File Names <em>(1.1.0)</em></h3>
+            <table class="api-table">
+                <tr>
+                    <th>Feature</th>
+                    <th>Signature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>file_safe_name</code></td>
+                    <td><code>(a_text: READABLE_STRING_GENERAL): STRING_32</code></td>
+                    <td>Turn arbitrary text into one usable Windows file name: <code>&lt; &gt; : " / \ | ? *</code>, control characters and surrogates become <code>_</code>; trailing dots and spaces dropped; reserved device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9, COM/LPT with superscript 1-3) get <code>_</code> after the stem; cut to 255 UTF-16 units keeping a short extension. Not reversible.</td>
+                </tr>
+                <tr>
+                    <td><code>is_file_safe_name</code></td>
+                    <td><code>(a_name: READABLE_STRING_GENERAL): BOOLEAN</code></td>
+                    <td>Can <code>a_name</code> be used as a file name as it stands?</td>
+                </tr>
+                <tr>
+                    <td><code>read_text_utf_8</code></td>
+                    <td><code>(a_path): STRING_32</code></td>
+                    <td>Read a file decoded from UTF-8 (see SIMPLE_FILE).</td>
+                </tr>
+                <tr>
+                    <td><code>write_text_utf_8</code></td>
+                    <td><code>(a_path, a_content): BOOLEAN</code></td>
+                    <td>Write a file as UTF-8 exactly, atomically (see SIMPLE_FILE).</td>
                 </tr>
             </table>
         </section>

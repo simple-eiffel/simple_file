@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-22-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-22-0 http://www.eiffel.com/developers/xml/configuration-1-22-0.xsd" name="kill_writer" uuid="C6E1A7B2-9D3F-4E58-A1B0-5F2E8D7C4A93">
+	<description>Kill-test writer: rewrites one note through SIMPLE_FILE.write_text until killed (RQ-06 S-F2-1 re-run). Driven by kill_test.ps1.</description>
+	<target name="kill_writer">
+		<root class="KILL_WRITER_APP" feature="make"/>
+		<file_rule>
+			<exclude>/EIFGENs$</exclude>
+		</file_rule>
+		<option warning="warning">
+			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
+		</option>
+		<setting name="console_application" value="true"/>
+		<setting name="dead_code_removal" value="feature"/>
+		<capability>
+			<concurrency support="scoop" use="thread"/>
+			<void_safety support="all"/>
+		</capability>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<library name="simple_file" location="..\..\simple_file.ecf"/>
+		<cluster name="src" location=".\src\"/>
+	</target>
+</system>
