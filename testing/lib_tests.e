@@ -770,6 +770,44 @@ feature -- Tests: D13 UTF-8 read, 100 ns time, one-pass listing
 			l_ignore := l_dir.delete_directory_recursive
 		end
 
+feature -- Tests: bulk binary I/O (1.2.0)
+
+	test_block_round_trip
+			-- 64 MB written and read back byte-exact; an offset read; a short read reports.
+		local
+			l_sf: SIMPLE_FILE
+			l_out, l_in, l_small: MANAGED_POINTER
+			i, l_size: INTEGER
+			l_same: BOOLEAN
+		do
+			l_size := 64 * 1024 * 1024
+			create l_out.make (l_size)
+			from i := 0 until i >= l_size loop
+				l_out.put_natural_8 (((i * 31 + i // 4096) \\ 251).to_natural_8, i)
+				i := i + 4093
+			end
+			l_out.put_natural_8 (77, l_size - 1)
+			create l_sf.make (temp_file_path ("block_rt"))
+			assert_true ("write 64 MB", l_sf.write_block (l_out, l_size, False))
+			assert_integers_equal ("size on disk", l_size, l_sf.size.to_integer_32)
+			create l_in.make (l_size)
+			assert_true ("read 64 MB", l_sf.read_block (l_in, 0, 0, l_size))
+			l_same := True
+			from i := 0 until not l_same or i = l_size loop
+				l_same := l_in.read_natural_8 (i) = l_out.read_natural_8 (i)
+				i := i + 1
+			end
+			assert_true ("byte-exact", l_same)
+			create l_small.make (16)
+			assert_true ("offset read", l_sf.read_block (l_small, 4, l_size.to_integer_64 - 8, 8))
+			assert_true ("offset bytes", l_small.read_natural_8 (11) = 77 and l_small.read_natural_8 (4) = l_out.read_natural_8 (l_size - 8))
+			assert_false ("short read reported", l_sf.read_block (l_small, 0, l_size.to_integer_64 - 4, 16))
+			assert_true ("error text", l_sf.has_error)
+			assert_true ("append", l_sf.write_block (l_small, 3, True))
+			assert_integers_equal ("appended size", l_size + 3, l_sf.size.to_integer_32)
+			assert_true ("cleanup", l_sf.delete)
+		end
+
 feature {NONE} -- Test support
 
 	hex (a_bytes: ARRAY [NATURAL_8]): STRING_8

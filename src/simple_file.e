@@ -1021,6 +1021,92 @@ feature -- Streaming Operations (for large files)
 			end
 		end
 
+feature -- Bulk binary I/O (C heap, 64-bit offsets)
+
+	read_block (a_target: MANAGED_POINTER; a_target_offset: INTEGER; a_file_offset: INTEGER_64; a_count: INTEGER): BOOLEAN
+			-- Read `a_count' bytes starting at byte `a_file_offset' of the file into
+			-- `a_target' at `a_target_offset'. One C stdio call into C-heap memory
+			-- (marked `blocking': a long read never stalls another processor's
+			-- collector), 64-bit file offsets (files over 2 GB). False, with
+			-- `last_error', when the file cannot be opened or holds fewer bytes.
+		require
+			non_negative: a_target_offset >= 0 and a_file_offset >= 0 and a_count >= 0
+			fits: a_target_offset + a_count <= a_target.count
+		local
+			l_path: NATIVE_STRING
+			l_read: INTEGER
+		do
+			reset_error
+			create l_path.make (internal_path.name)
+			l_read := c_read_block (l_path.item, a_target.item + a_target_offset, a_file_offset, a_count)
+			Result := l_read = a_count
+			if l_read = -1 then
+				set_error ({STRING_32} "File not readable: " + internal_path.name)
+			elseif l_read = -2 then
+				set_error ({STRING_32} "Cannot seek to byte " + a_file_offset.out + " in " + internal_path.name)
+			elseif not Result then
+				set_error ({STRING_32} "Short read (" + l_read.out + " of " + a_count.out + " bytes) in " + internal_path.name)
+			end
+		ensure
+			error_when_short: not Result implies has_error
+		end
+
+	write_block (a_source: MANAGED_POINTER; a_count: INTEGER; a_append: BOOLEAN): BOOLEAN
+			-- Write the first `a_count' bytes of `a_source' to the file, creating or
+			-- truncating it (or appending when `a_append'). One C stdio call from
+			-- C-heap memory, marked `blocking'. Not crash-safe on its own: for a
+			-- checkpoint, write a temporary name and `rename_to' it.
+		require
+			non_negative: a_count >= 0
+			fits: a_count <= a_source.count
+		local
+			l_path: NATIVE_STRING
+			l_written: INTEGER
+		do
+			reset_error
+			create l_path.make (internal_path.name)
+			l_written := c_write_block (l_path.item, a_source.item, a_count, a_append.to_integer)
+			Result := l_written = a_count
+			if not Result then
+				set_error ({STRING_32} "Short write (" + l_written.out + " of " + a_count.out + " bytes) to " + internal_path.name)
+			end
+		ensure
+			error_when_short: not Result implies has_error
+		end
+
+feature {NONE} -- Bulk binary I/O externals (blocking: C-heap buffers only)
+
+	c_read_block (a_path, a_dest: POINTER; a_offset: INTEGER_64; a_count: INTEGER): INTEGER
+			-- Bytes read, -1 if the file will not open, -2 if the seek fails.
+		external
+			"C blocking inline use <stdio.h>, <wchar.h>"
+		alias
+			"[
+				FILE* f = _wfopen((const wchar_t*)$a_path, L"rb");
+				size_t n;
+				if (f == NULL) return -1;
+				if (_fseeki64(f, (long long)$a_offset, SEEK_SET) != 0) { fclose(f); return -2; }
+				n = fread((char*)$a_dest, 1, (size_t)$a_count, f);
+				fclose(f);
+				return (EIF_INTEGER)n;
+			]"
+		end
+
+	c_write_block (a_path, a_source: POINTER; a_count, a_append: INTEGER): INTEGER
+			-- Bytes written (-1 if the file will not open).
+		external
+			"C blocking inline use <stdio.h>, <wchar.h>"
+		alias
+			"[
+				FILE* f = _wfopen((const wchar_t*)$a_path, $a_append ? L"ab" : L"wb");
+				size_t n;
+				if (f == NULL) return -1;
+				n = fwrite((const char*)$a_source, 1, (size_t)$a_count, f);
+				if (fclose(f) != 0) return -1;
+				return (EIF_INTEGER)n;
+			]"
+		end
+
 feature -- Path Transformation
 
 	resolve: STRING_32
