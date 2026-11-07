@@ -285,7 +285,7 @@ feature -- File Metadata
 			l_path: NATIVE_STRING
 		do
 			create l_path.make (internal_path.name)
-			Result := win32.last_write_100ns (l_path.item).max (0)
+			Result := os.last_write_100ns (l_path.item).max (0)
 		ensure
 			non_negative: Result >= 0
 		end
@@ -508,7 +508,7 @@ feature -- Write Operations
 			-- disk; see the class note. On failure the target is untouched,
 			-- the temporary file is removed and `last_error' says why.
 		do
-			Result := replace_with (text_bytes (a_content, True))
+			Result := replace_with (text_bytes (a_content, {PLATFORM}.is_windows))
 		ensure
 			success_implies_exists: Result implies exists
 			failure_implies_error: not Result implies has_error
@@ -554,7 +554,7 @@ feature -- Write Operations
 
 	write_lines (a_lines: LIST [READABLE_STRING_GENERAL]): BOOLEAN
 			-- Write lines to file (overwrites), atomically, each followed by a
-			-- line break (CR LF). Returns success.
+			-- line break (CR LF on Windows, LF elsewhere). Returns success.
 		local
 			l_text: STRING_32
 			i: INTEGER
@@ -569,7 +569,7 @@ feature -- Write Operations
 				l_text.append_character ('%N')
 				i := i + 1
 			end
-			Result := replace_with (text_bytes (l_text, True))
+			Result := replace_with (text_bytes (l_text, {PLATFORM}.is_windows))
 		ensure
 			success_implies_exists: Result implies exists
 			success_implies_line_count: Result implies lines_model.count = a_lines.count
@@ -583,7 +583,7 @@ feature -- Write Operations
 			-- killed mid-append can leave part of `a_content' at the end
 			-- (never damage what was there before).
 		do
-			Result := append_bytes (text_bytes (a_content, True))
+			Result := append_bytes (text_bytes (a_content, {PLATFORM}.is_windows))
 		ensure
 			success_implies_exists: Result implies exists
 			size_increased: Result implies size >= old size
@@ -600,7 +600,7 @@ feature -- Write Operations
 			create l_text.make (a_line.count + 1)
 			l_text.append_string_general (a_line)
 			l_text.append_character ('%N')
-			Result := append_bytes (text_bytes (l_text, True))
+			Result := append_bytes (text_bytes (l_text, {PLATFORM}.is_windows))
 		ensure
 			success_implies_exists: Result implies exists
 			line_count_increased: Result implies lines_model.count >= old lines_model.count
@@ -773,8 +773,8 @@ feature -- File Operations
 				set_error (stream_message (internal_path.name))
 			else
 				create l_path.make (internal_path.name)
-				l_code := win32.write_new_file (l_path.item, default_pointer, 0, default_pointer)
-				if l_code = 0 or l_code = {SIMPLE_FILE_WIN32}.Error_file_exists then
+				l_code := os.write_new_file (l_path.item, default_pointer, 0, default_pointer)
+				if l_code = 0 or l_code = {SIMPLE_FILE_PRIMITIVES}.Error_file_exists then
 					Result := True
 				else
 					set_os_error ({STRING_32} "Cannot create file: ", l_code)
@@ -836,8 +836,8 @@ feature -- Directory Operations
 			across listed (True, False) as ic loop
 				l_pid := temporary_owner (ic)
 				create l_path.make (internal_path.extended (ic).name)
-				if l_pid /= 0 and then l_pid /= win32.current_process_id and then not win32.is_owner_running (l_pid, l_path.item) then
-					if win32.delete_file (l_path.item) = 0 then
+				if l_pid /= 0 and then l_pid /= os.current_process_id and then not os.is_owner_running (l_pid, l_path.item) then
+					if os.delete_file (l_path.item) = 0 then
 						Result := Result + 1
 					else
 						l_failures := l_failures + 1
@@ -1187,15 +1187,15 @@ feature {NONE} -- Implementation
 		require
 			code_is_error: a_code /= 0
 		do
-			last_error := a_prefix.to_string_32 + internal_path.name + {STRING_32} " - " + win32.error_text (a_code)
+			last_error := a_prefix.to_string_32 + internal_path.name + {STRING_32} " - " + os.error_text (a_code)
 			last_error_code := a_code
 		ensure
 			has_error: has_error
 			code_set: last_error_code = a_code
 		end
 
-	win32: SIMPLE_FILE_WIN32
-			-- Win32 primitives.
+	os: SIMPLE_FILE_PRIMITIVES
+			-- Operating system primitives for this platform.
 		once
 			create Result
 		end
@@ -1294,18 +1294,18 @@ feature {NONE} -- Implementation
 				from
 					l_attempt := 1
 					create l_temp.make (temporary_sibling_name (l_attempt))
-					l_code := win32.write_new_file (l_temp.item, l_data.item, a_bytes.count, l_target.item)
+					l_code := os.write_new_file (l_temp.item, l_data.item, a_bytes.count, l_target.item)
 				until
-					l_attempt >= 8 or (l_code /= {SIMPLE_FILE_WIN32}.Error_file_exists and l_code /= {SIMPLE_FILE_WIN32}.Error_already_exists)
+					l_attempt >= 8 or (l_code /= {SIMPLE_FILE_PRIMITIVES}.Error_file_exists and l_code /= {SIMPLE_FILE_PRIMITIVES}.Error_already_exists)
 				loop
 					l_attempt := l_attempt + 1
 					create l_temp.make (temporary_sibling_name (l_attempt))
-					l_code := win32.write_new_file (l_temp.item, l_data.item, a_bytes.count, l_target.item)
+					l_code := os.write_new_file (l_temp.item, l_data.item, a_bytes.count, l_target.item)
 				end
 				if l_code = 0 then
-					l_code := win32.move_replace (l_temp.item, l_target.item)
+					l_code := os.move_replace (l_temp.item, l_target.item)
 					if l_code /= 0 then
-						l_ignored := win32.delete_file (l_temp.item)
+						l_ignored := os.delete_file (l_temp.item)
 					end
 				end
 				if l_code = 0 then
@@ -1328,9 +1328,9 @@ feature {NONE} -- Implementation
 		do
 			create l_name.make (40)
 			l_name.append ({STRING_32} ".~sf")
-			l_name.append (win32.current_process_id.to_hex_string)
+			l_name.append (os.current_process_id.to_hex_string)
 			l_name.append_character ('_')
-			l_name.append ((win32.performance_counter + a_attempt).to_hex_string)
+			l_name.append ((os.performance_counter + a_attempt).to_hex_string)
 			l_name.append ({STRING_32} ".tmp")
 			Result := internal_path.parent.extended (l_name).name
 		end
@@ -1390,7 +1390,7 @@ feature {NONE} -- Implementation
 					l_data.put_special_character_8 (a_bytes.area, 0, 0, a_bytes.count)
 				end
 				create l_target.make (internal_path.name)
-				l_code := win32.append_to_file (l_target.item, l_data.item, a_bytes.count)
+				l_code := os.append_to_file (l_target.item, l_data.item, a_bytes.count)
 				if l_code = 0 then
 					Result := True
 				else
@@ -1414,7 +1414,7 @@ feature {NONE} -- Implementation
 			create Result.make (0)
 			create l_path.make (internal_path.name)
 			create l_error.make (4)
-			l_handle := win32.open_for_read (l_path.item, l_error.item)
+			l_handle := os.open_for_read (l_path.item, l_error.item)
 			if l_handle = default_pointer then
 				set_os_error (a_failure_prefix, l_error.read_integer_32 (0))
 			else
@@ -1423,7 +1423,7 @@ feature {NONE} -- Implementation
 				until
 					l_done
 				loop
-					l_read := win32.read_chunk (l_handle, l_buffer.item, Read_chunk_size)
+					l_read := os.read_chunk (l_handle, l_buffer.item, Read_chunk_size)
 					if l_read < 0 then
 						set_os_error (a_failure_prefix, - l_read)
 						Result.wipe_out
@@ -1434,7 +1434,7 @@ feature {NONE} -- Implementation
 						Result.append (create {STRING_8}.make_from_c_substring (l_buffer.item, 1, l_read))
 					end
 				end
-				win32.close_handle (l_handle)
+				os.close_handle (l_handle)
 			end
 		ensure
 			empty_on_failure: has_error implies Result.is_empty
@@ -1450,7 +1450,6 @@ feature {NONE} -- Implementation
 			-- `a_files', subdirectories when `a_directories'.
 		local
 			l_data, l_error: MANAGED_POINTER
-			l_pattern_text: STRING_32
 			l_pattern: NATIVE_STRING
 			l_handle: POINTER
 			l_more, l_is_directory: BOOLEAN
@@ -1460,18 +1459,13 @@ feature {NONE} -- Implementation
 			reset_error
 			create Result.make (16)
 			if is_directory then
-				create l_data.make (win32.find_data_size)
+				create l_data.make (os.find_data_size)
 				create l_error.make (4)
-				l_pattern_text := internal_path.name.twin
-				if not l_pattern_text.is_empty and then not (l_pattern_text [l_pattern_text.count] = '\' or l_pattern_text [l_pattern_text.count] = '/') then
-					l_pattern_text.append_character ('\')
-				end
-				l_pattern_text.append_character ('*')
-				create l_pattern.make (l_pattern_text)
-				l_handle := win32.find_first (l_pattern.item, l_data.item, l_error.item)
+				create l_pattern.make (os.directory_pattern (internal_path.name))
+				l_handle := os.find_first (l_pattern.item, l_data.item, l_error.item)
 				if l_handle = default_pointer then
 					l_code := l_error.read_integer_32 (0)
-					if l_code /= {SIMPLE_FILE_WIN32}.Error_file_not_found then
+					if l_code /= {SIMPLE_FILE_PRIMITIVES}.Error_file_not_found then
 						set_os_error ({STRING_32} "Cannot list directory: ", l_code)
 					end
 				else
@@ -1480,18 +1474,18 @@ feature {NONE} -- Implementation
 					until
 						not l_more
 					loop
-						l_name := (create {NATIVE_STRING}.make_from_pointer (win32.find_data_name (l_data.item))).string
+						l_name := (create {NATIVE_STRING}.make_from_pointer (os.find_data_name (l_data.item))).string
 						if not (l_name.same_string_general (".") or l_name.same_string_general ("..")) then
-							l_is_directory := (win32.find_data_attributes (l_data.item) & {SIMPLE_FILE_WIN32}.Attribute_directory) /= 0
+							l_is_directory := (os.find_data_attributes (l_data.item) & {SIMPLE_FILE_PRIMITIVES}.Attribute_directory) /= 0
 							if (l_is_directory and a_directories) or (not l_is_directory and a_files) then
 								Result.extend (l_name)
 							end
 						end
-						l_more := win32.find_next (l_handle, l_data.item, l_error.item)
+						l_more := os.find_next (l_handle, l_data.item, l_error.item)
 					end
 					l_code := l_error.read_integer_32 (0)
-					win32.find_close (l_handle)
-					if l_code /= {SIMPLE_FILE_WIN32}.Error_no_more_files then
+					os.find_close (l_handle)
+					if l_code /= {SIMPLE_FILE_PRIMITIVES}.Error_no_more_files then
 						set_os_error ({STRING_32} "Cannot list directory: ", l_code)
 					end
 				end

@@ -28,7 +28,10 @@ note
 	revision: "$Revision$"
 
 class
-	SIMPLE_FILE_WIN32
+	SIMPLE_FILE_PRIMITIVES
+
+inherit
+	SIMPLE_FILE_OS
 
 feature -- Constants
 
@@ -61,10 +64,6 @@ feature -- Writing
 			-- not null and names an existing file, the new file takes its HIDDEN,
 			-- SYSTEM, ARCHIVE and NOT_CONTENT_INDEXED attributes. On any failure
 			-- after creation the new file is deleted. Returns 0 or a Win32 error.
-		require
-			path_exists: a_path /= default_pointer
-			count_non_negative: a_count >= 0
-			data_for_count: a_count > 0 implies a_data /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -101,9 +100,6 @@ feature -- Writing
 	move_replace (a_source, a_target: POINTER): INTEGER
 			-- MoveFileExW (`a_source', `a_target', MOVEFILE_REPLACE_EXISTING |
 			-- MOVEFILE_WRITE_THROUGH). Returns 0 or a Win32 error.
-		require
-			source_exists: a_source /= default_pointer
-			target_exists: a_target /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -115,10 +111,6 @@ feature -- Writing
 			-- sharing read and write as the C runtime's "a" mode does), write
 			-- `a_count' bytes from `a_data' at the end, close. Not atomic.
 			-- Returns 0 or a Win32 error.
-		require
-			path_exists: a_path /= default_pointer
-			count_non_negative: a_count >= 0
-			data_for_count: a_count > 0 implies a_data /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -143,8 +135,6 @@ feature -- Writing
 
 	delete_file (a_path: POINTER): INTEGER
 			-- DeleteFileW. Returns 0 or a Win32 error.
-		require
-			path_exists: a_path /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -157,9 +147,6 @@ feature -- Reading
 			-- CreateFileW (GENERIC_READ, sharing read, write and delete,
 			-- OPEN_EXISTING). Null on failure, with the Win32 error stored as a
 			-- 32-bit integer at `a_error'.
-		require
-			path_exists: a_path /= default_pointer
-			error_exists: a_error /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -174,10 +161,6 @@ feature -- Reading
 	read_chunk (a_handle, a_buffer: POINTER; a_capacity: INTEGER): INTEGER
 			-- ReadFile up to `a_capacity' bytes into `a_buffer'. Returns the
 			-- number read (0 at end of file) or minus a Win32 error.
-		require
-			handle_exists: a_handle /= default_pointer
-			buffer_exists: a_buffer /= default_pointer
-			capacity_positive: a_capacity > 0
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -190,8 +173,6 @@ feature -- Reading
 
 	close_handle (a_handle: POINTER)
 			-- CloseHandle on a handle opened for reading.
-		require
-			handle_exists: a_handle /= default_pointer
 		external
 			"C inline use <windows.h>"
 		alias
@@ -202,8 +183,6 @@ feature -- Status
 
 	attributes (a_path: POINTER): INTEGER_64
 			-- GetFileAttributesW, or -1 on failure.
-		require
-			path_exists: a_path /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -215,8 +194,6 @@ feature -- Status
 
 	set_attributes (a_path: POINTER; a_attributes: NATURAL_32): INTEGER
 			-- SetFileAttributesW. Returns 0 or a Win32 error.
-		require
-			path_exists: a_path /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -226,8 +203,6 @@ feature -- Status
 	last_write_100ns (a_path: POINTER): INTEGER_64
 			-- ftLastWriteTime of `a_path' as 100 ns ticks since 1601-01-01 UTC
 			-- (a Windows FILETIME), or -1 on failure.
-		require
-			path_exists: a_path /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -239,6 +214,16 @@ feature -- Status
 		end
 
 feature -- Enumeration
+
+	directory_pattern (a_directory: READABLE_STRING_32): STRING_32
+			-- `a_directory' with the "\*" wildcard FindFirstFileExW needs.
+		do
+			create Result.make_from_string (a_directory)
+			if not Result.is_empty and then not (Result [Result.count] = '\' or Result [Result.count] = '/') then
+				Result.append_character ('\')
+			end
+			Result.append_character ('*')
+		end
 
 	find_data_size: INTEGER
 			-- sizeof (WIN32_FIND_DATAW).
@@ -252,10 +237,6 @@ feature -- Enumeration
 			-- FindFirstFileExW (`a_pattern', FindExInfoBasic, FindExSearchNameMatch,
 			-- FIND_FIRST_EX_LARGE_FETCH) filling `a_data'. Null on failure, with the
 			-- Win32 error stored as a 32-bit integer at `a_error'.
-		require
-			pattern_exists: a_pattern /= default_pointer
-			data_exists: a_data /= default_pointer
-			error_exists: a_error /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -273,10 +254,6 @@ feature -- Enumeration
 	find_next (a_handle, a_data, a_error: POINTER): BOOLEAN
 			-- FindNextFileW. False at the end or on failure, with the Win32 error
 			-- (ERROR_NO_MORE_FILES at the end) stored at `a_error'.
-		require
-			handle_exists: a_handle /= default_pointer
-			data_exists: a_data /= default_pointer
-			error_exists: a_error /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -289,8 +266,6 @@ feature -- Enumeration
 
 	find_close (a_handle: POINTER)
 			-- FindClose.
-		require
-			handle_exists: a_handle /= default_pointer
 		external
 			"C inline use <windows.h>"
 		alias
@@ -299,8 +274,6 @@ feature -- Enumeration
 
 	find_data_name (a_data: POINTER): POINTER
 			-- Address of the null-terminated cFileName inside `a_data'.
-		require
-			data_exists: a_data /= default_pointer
 		external
 			"C inline use <windows.h>"
 		alias
@@ -309,8 +282,6 @@ feature -- Enumeration
 
 	find_data_attributes (a_data: POINTER): NATURAL_32
 			-- dwFileAttributes of `a_data'.
-		require
-			data_exists: a_data /= default_pointer
 		external
 			"C inline use <windows.h>"
 		alias
@@ -332,8 +303,6 @@ feature -- Process and errors
 			-- it may be the process that created it? A process started after
 			-- the file was created reuses the id of a dead owner and does not
 			-- count. One that exists but may not be queried counts as running.
-		require
-			file_exists: a_file /= default_pointer
 		external
 			"C blocking inline use <windows.h>"
 		alias
@@ -373,9 +342,6 @@ feature -- Process and errors
 			-- FormatMessageW text of Win32 error `a_code' into `a_buffer' (room for
 			-- `a_capacity' wide characters), trailing line breaks and period removed.
 			-- Returns the number of wide characters written (0 if none known).
-		require
-			buffer_exists: a_buffer /= default_pointer
-			capacity_positive: a_capacity > 1
 		external
 			"C inline use <windows.h>"
 		alias
@@ -405,8 +371,6 @@ feature -- Process and errors
 			Result.append ({STRING_32} "(Win32 error ")
 			Result.append (a_code.out)
 			Result.append_character (')')
-		ensure
-			names_code: Result.has_substring (a_code.out)
 		end
 
 note

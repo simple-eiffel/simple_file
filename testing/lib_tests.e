@@ -306,9 +306,9 @@ feature -- Tests: D10 atomic replacing write
 		do
 			create l_sf.make (temp_file_path ("bytes_as_before"))
 			assert_true ("lf write", l_sf.write_text ({STRING_32} "a%Nb"))
-			assert_strings_equal ("lf becomes crlf", "61 0D 0A 62", hex (l_sf.read_bytes))
+			assert_strings_equal ("lf follows the platform", "61 " + eol_hex + " 62", hex (l_sf.read_bytes))
 			assert_true ("crlf write", l_sf.write_text ({STRING_32} "a%R%Nb%N"))
-			assert_strings_equal ("cr kept, lf doubled as 1.0", "61 0D 0D 0A 62 0D 0A", hex (l_sf.read_bytes))
+			assert_strings_equal ("cr kept, lf follows the platform", "61 0D " + eol_hex + " 62 " + eol_hex, hex (l_sf.read_bytes))
 			create l_s8.make_empty
 			l_s8.append_character ('x')
 			l_s8.append_character ((0xE9).to_character_8)
@@ -326,11 +326,11 @@ feature -- Tests: D10 atomic replacing write
 			l_lines.extend ({STRING_32} "x")
 			l_lines.extend ({STRING_32} "y")
 			assert_true ("lines write", l_sf.write_lines (l_lines))
-			assert_strings_equal ("lines bytes", "78 0D 0A 79 0D 0A", hex (l_sf.read_bytes))
+			assert_strings_equal ("lines bytes", "78 " + eol_hex + " 79 " + eol_hex, hex (l_sf.read_bytes))
 			assert_true ("p", l_sf.write_text ("p"))
 			assert_true ("append text", l_sf.append_text ({STRING_32} "q%Nr"))
 			assert_true ("append line", l_sf.append_line ("s"))
-			assert_strings_equal ("append bytes", "70 71 0D 0A 72 73 0D 0A", hex (l_sf.read_bytes))
+			assert_strings_equal ("append bytes", "70 71 " + eol_hex + " 72 73 " + eol_hex, hex (l_sf.read_bytes))
 			assert_true ("empty write", l_sf.write_text (""))
 			assert_integers_equal ("empty file", 0, l_sf.size.to_integer_32)
 			l_ignore := l_sf.delete
@@ -372,44 +372,70 @@ feature -- Tests: D10 atomic replacing write
 			l_ok: BOOLEAN
 			l_ignore: BOOLEAN
 		do
-			create l_dir.make (temp_file_path ("held_dir"))
-			assert_true ("dir", l_dir.create_directory)
-			create l_sf.make (l_dir.path.extended ("held.md").name)
-			assert_true ("old written", l_sf.write_text ("old content"))
-			create l_holder.make_with_path (l_sf.path)
-			l_holder.open_read
-			l_ok := l_sf.write_text ("new content")
-			l_holder.close
-			assert_false ("replace refused", l_ok)
-			assert_true ("error reported", l_sf.has_error)
-			assert_true ("win32 code kept", l_sf.last_error_code /= 0)
-			assert_string_contains ("message names the code", l_sf.last_error, "Win32 error")
-			assert_strings_equal ("old content intact", "old content", l_sf.read_text.to_string_8)
-			assert_integers_equal ("temporary removed", 1, l_dir.entries.count)
-			assert_true ("next write works", l_sf.write_text ("new content"))
-			assert_strings_equal ("new content", "new content", l_sf.read_text.to_string_8)
-			l_ignore := l_dir.delete_directory_recursive
+			if {PLATFORM}.is_windows then
+				create l_dir.make (temp_file_path ("held_dir"))
+				assert_true ("dir", l_dir.create_directory)
+				create l_sf.make (l_dir.path.extended ("held.md").name)
+				assert_true ("old written", l_sf.write_text ("old content"))
+				create l_holder.make_with_path (l_sf.path)
+				l_holder.open_read
+				l_ok := l_sf.write_text ("new content")
+				l_holder.close
+				assert_false ("replace refused", l_ok)
+				assert_true ("error reported", l_sf.has_error)
+				assert_true ("win32 code kept", l_sf.last_error_code /= 0)
+				assert_string_contains ("message names the code", l_sf.last_error, "Win32 error")
+				assert_strings_equal ("old content intact", "old content", l_sf.read_text.to_string_8)
+				assert_integers_equal ("temporary removed", 1, l_dir.entries.count)
+				assert_true ("next write works", l_sf.write_text ("new content"))
+				assert_strings_equal ("new content", "new content", l_sf.read_text.to_string_8)
+				l_ignore := l_dir.delete_directory_recursive
+			end
 		end
 
 	test_write_text_keeps_hidden_attribute
 			-- Replacing a hidden file keeps it hidden.
 		local
 			l_dir, l_sf: SIMPLE_FILE
-			l_win32: SIMPLE_FILE_WIN32
+			l_os: SIMPLE_FILE_PRIMITIVES
 			l_path: NATIVE_STRING
 			l_ignore: BOOLEAN
 		do
-			create l_win32
-			create l_dir.make (temp_file_path ("hidden_dir"))
-			assert_true ("dir", l_dir.create_directory)
-			create l_sf.make (l_dir.path.extended ("hidden.md").name)
-			assert_true ("first", l_sf.write_text ("one"))
-			create l_path.make (l_sf.path_string)
-			assert_integers_equal ("hide", 0, l_win32.set_attributes (l_path.item, {NATURAL_32} 0x2))
-			assert_true ("replace hidden", l_sf.write_text ("two"))
-			assert_true ("still hidden", (l_win32.attributes (l_path.item) & 0x2) /= 0)
-			assert_strings_equal ("content", "two", l_sf.read_text.to_string_8)
-			l_ignore := l_dir.delete_directory_recursive
+			if {PLATFORM}.is_windows then
+				create l_os
+				create l_dir.make (temp_file_path ("hidden_dir"))
+				assert_true ("dir", l_dir.create_directory)
+				create l_sf.make (l_dir.path.extended ("hidden.md").name)
+				assert_true ("first", l_sf.write_text ("one"))
+				create l_path.make (l_sf.path_string)
+				assert_integers_equal ("hide", 0, l_os.set_attributes (l_path.item, {NATURAL_32} 0x2))
+				assert_true ("replace hidden", l_sf.write_text ("two"))
+				assert_true ("still hidden", (l_os.attributes (l_path.item) & 0x2) /= 0)
+				assert_strings_equal ("content", "two", l_sf.read_text.to_string_8)
+				l_ignore := l_dir.delete_directory_recursive
+			end
+		end
+
+	test_replacing_write_keeps_mode
+			-- On POSIX a replacing write keeps the file's permissions.
+		local
+			l_sf: SIMPLE_FILE
+			l_os: SIMPLE_FILE_PRIMITIVES
+			l_path: NATIVE_STRING
+			l_ignore: BOOLEAN
+		do
+			if not {PLATFORM}.is_windows then
+				create l_os
+				create l_sf.make (temp_file_path ("keeps_mode"))
+				assert_true ("first", l_sf.write_text ("one"))
+				create l_path.make (l_sf.path_string)
+				assert_integers_equal ("read only", 0, l_os.set_attributes (l_path.item, {NATURAL_32} 0x1))
+				assert_true ("replace", l_sf.write_text ("two"))
+				assert_true ("still read only", (l_os.attributes (l_path.item) & 0x1) /= 0)
+				assert_strings_equal ("content", "two", l_sf.read_text.to_string_8)
+				l_ignore := l_os.set_attributes (l_path.item, {NATURAL_32} 0x80) = 0
+				l_ignore := l_sf.delete
+			end
 		end
 
 	test_remove_stale_temporaries
@@ -417,16 +443,16 @@ feature -- Tests: D10 atomic replacing write
 			-- process and every other file are kept.
 		local
 			l_dir, l_sf: SIMPLE_FILE
-			l_win32: SIMPLE_FILE_WIN32
+			l_os: SIMPLE_FILE_PRIMITIVES
 			l_own: STRING_32
 			l_ignore: BOOLEAN
 		do
-			create l_win32
+			create l_os
 			create l_dir.make (temp_file_path ("sweep_dir"))
 			assert_true ("dir", l_dir.create_directory)
-			create l_sf.make (l_dir.path.extended (".~sf00000001_1A2B.tmp").name)
+			create l_sf.make (l_dir.path.extended (".~sf7FFFFFF0_1A2B.tmp").name)
 			assert_true ("dead temp", l_sf.write_text ("left by a kill"))
-			l_own := {STRING_32} ".~sf" + l_win32.current_process_id.to_hex_string + {STRING_32} "_77.tmp"
+			l_own := {STRING_32} ".~sf" + l_os.current_process_id.to_hex_string + {STRING_32} "_77.tmp"
 			create l_sf.make (l_dir.path.extended (l_own).name)
 			assert_true ("own temp", l_sf.write_text ("mine"))
 			create l_sf.make (l_dir.path.extended (".~sfZZ_1.tmp").name)
@@ -447,46 +473,77 @@ feature -- Tests: D11 ReadOnly-attribute folder
 			-- simple_file (1.0 created 0 of 20 here).
 		local
 			l_dir, l_sf, l_src: SIMPLE_FILE
-			l_win32: SIMPLE_FILE_WIN32
+			l_os: SIMPLE_FILE_PRIMITIVES
 			l_dir_native: NATIVE_STRING
 			l_lines: ARRAYED_LIST [STRING_32]
 			i, l_written: INTEGER
 			l_ignore: BOOLEAN
 		do
-			create l_win32
-			create l_src.make (temp_file_path ("ro_source"))
-			assert_true ("source", l_src.write_text ("copied"))
-			create l_dir.make (temp_file_path ("ro_dir"))
-			assert_true ("dir", l_dir.create_directory)
-			create l_dir_native.make (l_dir.path_string)
-			assert_integers_equal ("set ReadOnly", 0, l_win32.set_attributes (l_dir_native.item, {NATURAL_32} 0x1))
-			assert_true ("attribute set", (l_win32.attributes (l_dir_native.item) & 0x1) /= 0)
-			from i := 1 until i > 20 loop
-				create l_sf.make (l_dir.path.extended ("note_" + i.out + ".md").name)
-				if l_sf.write_text ("body " + i.out) and then l_sf.exists then
-					l_written := l_written + 1
+			if {PLATFORM}.is_windows then
+				create l_os
+				create l_src.make (temp_file_path ("ro_source"))
+				assert_true ("source", l_src.write_text ("copied"))
+				create l_dir.make (temp_file_path ("ro_dir"))
+				assert_true ("dir", l_dir.create_directory)
+				create l_dir_native.make (l_dir.path_string)
+				assert_integers_equal ("set ReadOnly", 0, l_os.set_attributes (l_dir_native.item, {NATURAL_32} 0x1))
+				assert_true ("attribute set", (l_os.attributes (l_dir_native.item) & 0x1) /= 0)
+				from i := 1 until i > 20 loop
+					create l_sf.make (l_dir.path.extended ("note_" + i.out + ".md").name)
+					if l_sf.write_text ("body " + i.out) and then l_sf.exists then
+						l_written := l_written + 1
+					end
+					i := i + 1
 				end
-				i := i + 1
+				assert_integers_equal ("20 of 20 written", 20, l_written)
+				create l_sf.make (l_dir.path.extended ("appended.md").name)
+				assert_true ("append creates", l_sf.append_text ("a"))
+				create l_sf.make (l_dir.path.extended ("bytes.bin").name)
+				assert_true ("write_bytes", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<1, 2, 3>>))
+				create l_sf.make (l_dir.path.extended ("lines.txt").name)
+				create l_lines.make (1)
+				l_lines.extend ({STRING_32} "one")
+				assert_true ("write_lines", l_sf.write_lines (l_lines))
+				create l_sf.make (l_dir.path.extended ("empty.txt").name)
+				assert_true ("create_if_missing", l_sf.create_if_missing)
+				create l_sf.make (l_dir.path.extended ("utf8.md").name)
+				assert_true ("write_text_utf_8", l_sf.write_text_utf_8 ("u"))
+				assert_true ("copy_to", l_src.copy_to (l_dir.path.extended ("copy.md").name))
+				assert_integers_equal ("26 files", 26, l_dir.files.count)
+				assert_true ("still ReadOnly", (l_os.attributes (l_dir_native.item) & 0x1) /= 0)
+				l_ignore := l_os.set_attributes (l_dir_native.item, {NATURAL_32} 0x80) = 0
+				l_ignore := l_dir.delete_directory_recursive
+				l_ignore := l_src.delete
 			end
-			assert_integers_equal ("20 of 20 written", 20, l_written)
-			create l_sf.make (l_dir.path.extended ("appended.md").name)
-			assert_true ("append creates", l_sf.append_text ("a"))
-			create l_sf.make (l_dir.path.extended ("bytes.bin").name)
-			assert_true ("write_bytes", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<1, 2, 3>>))
-			create l_sf.make (l_dir.path.extended ("lines.txt").name)
-			create l_lines.make (1)
-			l_lines.extend ({STRING_32} "one")
-			assert_true ("write_lines", l_sf.write_lines (l_lines))
-			create l_sf.make (l_dir.path.extended ("empty.txt").name)
-			assert_true ("create_if_missing", l_sf.create_if_missing)
-			create l_sf.make (l_dir.path.extended ("utf8.md").name)
-			assert_true ("write_text_utf_8", l_sf.write_text_utf_8 ("u"))
-			assert_true ("copy_to", l_src.copy_to (l_dir.path.extended ("copy.md").name))
-			assert_integers_equal ("26 files", 26, l_dir.files.count)
-			assert_true ("still ReadOnly", (l_win32.attributes (l_dir_native.item) & 0x1) /= 0)
-			l_ignore := l_win32.set_attributes (l_dir_native.item, {NATURAL_32} 0x80) = 0
-			l_ignore := l_dir.delete_directory_recursive
-			l_ignore := l_src.delete
+		end
+
+	test_refused_replace_keeps_old_content
+			-- On POSIX an open file can be replaced, so a read-only folder forces the
+			-- refusal: False with the OS error, old content whole, no temporary left.
+		local
+			l_dir, l_sf: SIMPLE_FILE
+			l_os: SIMPLE_FILE_PRIMITIVES
+			l_dir_native: NATIVE_STRING
+			l_ok, l_ignore: BOOLEAN
+		do
+			if not {PLATFORM}.is_windows then
+				create l_os
+				create l_dir.make (temp_file_path ("refused_dir"))
+				assert_true ("dir", l_dir.create_directory)
+				create l_sf.make (l_dir.path.extended ("held.md").name)
+				assert_true ("old written", l_sf.write_text ("old content"))
+				create l_dir_native.make (l_dir.path_string)
+				assert_integers_equal ("read only", 0, l_os.set_attributes (l_dir_native.item, {NATURAL_32} 0x1))
+				l_ok := l_sf.write_text ("new content")
+				l_ignore := l_os.set_attributes (l_dir_native.item, {NATURAL_32} 0x80) = 0
+				assert_false ("replace refused", l_ok)
+				assert_true ("error reported", l_sf.has_error)
+				assert_true ("code kept", l_sf.last_error_code /= 0)
+				assert_string_contains ("message names the code", l_sf.last_error, "errno")
+				assert_strings_equal ("old content intact", "old content", l_sf.read_text.to_string_8)
+				assert_integers_equal ("temporary removed", 1, l_dir.entries.count)
+				l_ignore := l_dir.delete_directory_recursive
+			end
 		end
 
 	test_write_failure_is_reported
@@ -495,7 +552,7 @@ feature -- Tests: D11 ReadOnly-attribute folder
 		local
 			l_sf: SIMPLE_FILE
 		do
-			create l_sf.make (temp_file_path ("missing_parent") + {STRING_32} "\no\such\note.md")
+			create l_sf.make ((create {PATH}.make_from_string (temp_file_path ("missing_parent"))).extended ("no").extended ("such").extended ("note.md").name)
 			assert_false ("write refused", l_sf.write_text ("x"))
 			assert_true ("error", l_sf.has_error)
 			assert_true ("path not found code", l_sf.last_error_code = 3 or l_sf.last_error_code = 2)
@@ -650,9 +707,9 @@ feature -- Tests: D13 UTF-8 read, 100 ns time, one-pass listing
 			l_read := l_sf.read_text_utf_8
 			assert_false ("no error", l_sf.has_error)
 			assert_true ("exact round trip incl. CR LF and final LF", l_read.same_string (l_text))
-			assert_integers_equal ("legacy read_text still widens bytes", 2 + 2 + 2 + 4 + 6 + 1, l_sf.read_text.count)
+			assert_integers_equal ("legacy read_text still widens bytes", 2 + 2 + 2 + 4 + 6 + 1 + posix_cr_kept, l_sf.read_text.count)
 			assert_true ("write_text output", l_sf.write_text ({STRING_32} "a%Nb"))
-			assert_true ("write_text crlf visible", l_sf.read_text_utf_8.same_string ({STRING_32} "a%R%Nb"))
+			assert_true ("write_text line break", l_sf.read_text_utf_8.same_string (if {PLATFORM}.is_windows then {STRING_32} "a%R%Nb" else {STRING_32} "a%Nb" end))
 			assert_true ("bom file", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<0xEF, 0xBB, 0xBF, 0x41>>))
 			assert_true ("bom dropped", l_sf.read_text_utf_8.same_string ({STRING_32} "A"))
 			assert_true ("invalid file", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<0x41, 0xFF, 0x42>>))
@@ -701,14 +758,14 @@ feature -- Tests: D13 UTF-8 read, 100 ns time, one-pass listing
 			l_legacy: LEGACY_LISTING
 			l_names: ARRAYED_LIST [STRING_32]
 			l_name: STRING_32
-			l_win32: SIMPLE_FILE_WIN32
+			l_os: SIMPLE_FILE_PRIMITIVES
 			l_native: NATIVE_STRING
 			l_new, l_old: ARRAYED_LIST [STRING_32]
 			i: INTEGER
 			l_ignore: BOOLEAN
 		do
 			create l_legacy
-			create l_win32
+			create l_os
 			create l_dir.make (temp_file_path ("listing_dir"))
 			assert_true ("dir", l_dir.create_directory)
 			create l_names.make (8)
@@ -738,7 +795,7 @@ feature -- Tests: D13 UTF-8 read, 100 ns time, one-pass listing
 				assert_true ({STRING_32} "made " + ic, l_sf.write_text ("x"))
 			end
 			create l_native.make (l_dir.path.extended (".hidden").name)
-			l_ignore := l_win32.set_attributes (l_native.item, {NATURAL_32} 0x2) = 0
+			l_ignore := l_os.set_attributes (l_native.item, {NATURAL_32} 0x2) = 0
 			create l_sub.make (l_dir.path.extended ("sub").name)
 			assert_true ("sub", l_sub.create_directory)
 			create l_name.make_empty
@@ -785,6 +842,24 @@ feature {NONE} -- Test support
 		end
 
 feature {NONE} -- Helpers
+
+	eol_hex: STRING_8
+			-- A written line break, as hex: CR LF on Windows, LF elsewhere.
+		do
+			if {PLATFORM}.is_windows then
+				Result := "0D 0A"
+			else
+				Result := "0A"
+			end
+		end
+
+	posix_cr_kept: INTEGER
+			-- 1 where text-mode reads keep a CR, which Windows drops.
+		do
+			if not {PLATFORM}.is_windows then
+				Result := 1
+			end
+		end
 
 	temp_file_path (a_prefix: READABLE_STRING_GENERAL): STRING_32
 			-- Generate temp file path for testing.
