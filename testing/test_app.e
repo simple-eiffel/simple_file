@@ -58,6 +58,7 @@ feature {NONE} -- Initialization
 			run_test (agent tests.test_write_failure_is_reported, "test_write_failure_is_reported")
 			run_test (agent tests.test_stream_names_refused, "test_stream_names_refused")
 			run_test (agent tests.test_is_stream_path, "test_is_stream_path")
+			run_test (agent tests.test_colon_is_legal_off_windows, "test_colon_is_legal_off_windows")
 			run_test (agent tests.test_file_safe_name, "test_file_safe_name")
 			run_test (agent tests.test_file_safe_names_make_real_files, "test_file_safe_names_make_real_files")
 			run_test (agent tests.test_read_text_utf_8, "test_read_text_utf_8")

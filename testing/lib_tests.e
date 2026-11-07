@@ -572,27 +572,29 @@ feature -- Tests: D12 ':' in names, file_safe_name
 			l_bad: STRING_32
 			l_ignore: BOOLEAN
 		do
-			create l_dir.make (temp_file_path ("colon_dir"))
-			assert_true ("dir", l_dir.create_directory)
-			l_bad := l_dir.path_string + {STRING_32} "\John 3:16.md"
-			create l_sf.make (l_bad)
-			assert_true ("is stream path", l_sf.is_stream_path)
-			assert_false ("write_text refused", l_sf.write_text ("In the beginning"))
-			assert_string_contains ("reason", l_sf.last_error, "alternate data stream")
-			assert_false ("write_text_utf_8 refused", l_sf.write_text_utf_8 ("x"))
-			assert_false ("write_bytes refused", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<1>>))
-			assert_false ("append refused", l_sf.append_text ("x"))
-			assert_true ("append error", l_sf.has_error)
-			assert_false ("create refused", l_sf.create_if_missing)
-			assert_true ("create error", l_sf.has_error)
-			create l_src.make (l_dir.path.extended ("source.md").name)
-			assert_true ("source", l_src.write_text ("s"))
-			assert_false ("copy refused", l_src.copy_to (l_bad))
-			assert_true ("copy error", l_src.has_error)
-			assert_false ("move refused", l_src.move_to (l_bad))
-			assert_true ("source still there", l_src.exists)
-			assert_integers_equal ("no John 3 file", 1, l_dir.entries.count)
-			l_ignore := l_dir.delete_directory_recursive
+			if {PLATFORM}.is_windows then
+				create l_dir.make (temp_file_path ("colon_dir"))
+				assert_true ("dir", l_dir.create_directory)
+				l_bad := l_dir.path_string + {STRING_32} "\John 3:16.md"
+				create l_sf.make (l_bad)
+				assert_true ("is stream path", l_sf.is_stream_path)
+				assert_false ("write_text refused", l_sf.write_text ("In the beginning"))
+				assert_string_contains ("reason", l_sf.last_error, "alternate data stream")
+				assert_false ("write_text_utf_8 refused", l_sf.write_text_utf_8 ("x"))
+				assert_false ("write_bytes refused", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<1>>))
+				assert_false ("append refused", l_sf.append_text ("x"))
+				assert_true ("append error", l_sf.has_error)
+				assert_false ("create refused", l_sf.create_if_missing)
+				assert_true ("create error", l_sf.has_error)
+				create l_src.make (l_dir.path.extended ("source.md").name)
+				assert_true ("source", l_src.write_text ("s"))
+				assert_false ("copy refused", l_src.copy_to (l_bad))
+				assert_true ("copy error", l_src.has_error)
+				assert_false ("move refused", l_src.move_to (l_bad))
+				assert_true ("source still there", l_src.exists)
+				assert_integers_equal ("no John 3 file", 1, l_dir.entries.count)
+				l_ignore := l_dir.delete_directory_recursive
+			end
 		end
 
 	test_is_stream_path
@@ -602,9 +604,32 @@ feature -- Tests: D12 ':' in names, file_safe_name
 			assert_false ("long prefix", (create {SIMPLE_FILE}.make ("\\?\C:\x\y.md")).is_stream_path)
 			assert_false ("drive relative", (create {SIMPLE_FILE}.make ("d:y.md")).is_stream_path)
 			assert_false ("relative", (create {SIMPLE_FILE}.make ("notes\y.md")).is_stream_path)
-			assert_true ("relative colon", (create {SIMPLE_FILE}.make ("notes\John 3:16.md")).is_stream_path)
-			assert_true ("absolute colon", (create {SIMPLE_FILE}.make ("C:\x\a:b")).is_stream_path)
-			assert_true ("stream syntax", (create {SIMPLE_FILE}.make ("C:\x\f.txt:Zone.Identifier")).is_stream_path)
+			if {PLATFORM}.is_windows then
+				assert_true ("relative colon", (create {SIMPLE_FILE}.make ("notes\John 3:16.md")).is_stream_path)
+				assert_true ("absolute colon", (create {SIMPLE_FILE}.make ("C:\x\a:b")).is_stream_path)
+				assert_true ("stream syntax", (create {SIMPLE_FILE}.make ("C:\x\f.txt:Zone.Identifier")).is_stream_path)
+			else
+				assert_false ("relative colon", (create {SIMPLE_FILE}.make ("notes\John 3:16.md")).is_stream_path)
+				assert_false ("absolute colon", (create {SIMPLE_FILE}.make ("C:\x\a:b")).is_stream_path)
+				assert_false ("stream syntax", (create {SIMPLE_FILE}.make ("C:\x\f.txt:Zone.Identifier")).is_stream_path)
+			end
+		end
+
+	test_colon_is_legal_off_windows
+			-- Off Windows a colon is an ordinary name character.
+		local
+			l_dir, l_sf: SIMPLE_FILE
+			l_ignore: BOOLEAN
+		do
+			if not {PLATFORM}.is_windows then
+				create l_dir.make (temp_file_path ("colon_ok"))
+				assert_true ("dir", l_dir.create_directory)
+				create l_sf.make (l_dir.path.extended ("10:30.log").name)
+				assert_false ("not a stream", l_sf.is_stream_path)
+				assert_true ("written", l_sf.write_text ("x"))
+				assert_true ("exists", l_sf.exists)
+				l_ignore := l_dir.delete_directory_recursive
+			end
 		end
 
 	test_file_safe_name

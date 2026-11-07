@@ -233,20 +233,24 @@ feature -- File Status
 			-- Does the path name an NTFS alternate data stream, that is, does
 			-- it hold a ':' other than a drive letter's? Windows reads
 			-- "notes\John 3:16.md" as stream "16.md" of a file "John 3", so
-			-- every write and create refuses such a path.
+			-- every write and create refuses such a path. Off Windows a ':' is
+			-- an ordinary name character, so this is False there; use
+			-- {SIMPLE_FILES}.file_safe_name for a name that must travel.
 		local
 			l_name: STRING_32
 			l_start: INTEGER
 		do
-			l_name := internal_path.name
-			l_start := 1
-			if l_name.starts_with ({STRING_32} "\\?\") or l_name.starts_with ({STRING_32} "\\.\") then
-				l_start := 5
+			if {PLATFORM}.is_windows then
+				l_name := internal_path.name
+				l_start := 1
+				if l_name.starts_with ({STRING_32} "\\?\") or l_name.starts_with ({STRING_32} "\\.\") then
+					l_start := 5
+				end
+				if l_name.count > l_start and then is_ascii_letter (l_name [l_start]) and then l_name [l_start + 1] = ':' then
+					l_start := l_start + 2
+				end
+				Result := l_start <= l_name.count and then l_name.index_of (':', l_start) > 0
 			end
-			if l_name.count > l_start and then is_ascii_letter (l_name [l_start]) and then l_name [l_start + 1] = ':' then
-				l_start := l_start + 2
-			end
-			Result := l_start <= l_name.count and then l_name.index_of (':', l_start) > 0
 		end
 
 feature -- File Metadata
