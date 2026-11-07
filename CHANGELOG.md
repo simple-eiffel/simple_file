@@ -2,6 +2,15 @@
 
 All notable changes to simple_file will be documented in this file.
 
+## [1.2.0] - 2026-10-25
+
+### Added
+- `read_block (target, target_offset, file_offset, count)` and `write_block (source, count, append)`: bulk binary I/O straight into/out of a MANAGED_POINTER (C heap), one C stdio call each, marked `blocking`, 64-bit file offsets (files over 2 GB). Gap G-5 for simple_tensor safetensors checkpoints; `read_chunk` reads byte by byte into an Eiffel ARRAY with INTEGER offsets.
+- Test `test_block_round_trip`: 64 MB byte-exact round trip, offset read, short read reported, append.
+- Test runner prints the failing assertion tag.
+
+No class inherits SIMPLE_FILE (fleet grep), so the additions cannot clash in its 27 client libraries; simple_markdown (whose own classes have a `read_block`) type-checks clean.
+
 ## [1.1.0] - 2026-10-08
 
 Fixes the simple_file defects found by executed spikes in the simple_bible

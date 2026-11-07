@@ -86,16 +86,9 @@ feature -- Comparison
 feature -- Clock
 
 	now_ms: REAL_64
-			-- QueryPerformanceCounter in milliseconds.
-		external
-			"C inline use <windows.h>"
-		alias
-			"[
-				LARGE_INTEGER f, c;
-				QueryPerformanceFrequency (&f);
-				QueryPerformanceCounter (&c);
-				return (EIF_REAL_64) c.QuadPart * 1000.0 / (EIF_REAL_64) f.QuadPart;
-			]"
+			-- Monotonic clock in milliseconds.
+		do
+			Result := (create {SIMPLE_MONOTONIC_CLOCK}).nanoseconds / 1000000.0
 		end
 
 end

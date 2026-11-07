@@ -51,16 +51,20 @@ feature {NONE} -- Initialization
 			run_test (agent tests.test_write_text_leaves_no_temporary, "test_write_text_leaves_no_temporary")
 			run_test (agent tests.test_write_text_failure_keeps_old_content, "test_write_text_failure_keeps_old_content")
 			run_test (agent tests.test_write_text_keeps_hidden_attribute, "test_write_text_keeps_hidden_attribute")
+			run_test (agent tests.test_replacing_write_keeps_mode, "test_replacing_write_keeps_mode")
 			run_test (agent tests.test_remove_stale_temporaries, "test_remove_stale_temporaries")
 			run_test (agent tests.test_readonly_folder_creates_files, "test_readonly_folder_creates_files")
+			run_test (agent tests.test_refused_replace_keeps_old_content, "test_refused_replace_keeps_old_content")
 			run_test (agent tests.test_write_failure_is_reported, "test_write_failure_is_reported")
 			run_test (agent tests.test_stream_names_refused, "test_stream_names_refused")
 			run_test (agent tests.test_is_stream_path, "test_is_stream_path")
+			run_test (agent tests.test_colon_is_legal_off_windows, "test_colon_is_legal_off_windows")
 			run_test (agent tests.test_file_safe_name, "test_file_safe_name")
 			run_test (agent tests.test_file_safe_names_make_real_files, "test_file_safe_names_make_real_files")
 			run_test (agent tests.test_read_text_utf_8, "test_read_text_utf_8")
 			run_test (agent tests.test_modified_time_100ns, "test_modified_time_100ns")
 			run_test (agent tests.test_listing_matches_legacy, "test_listing_matches_legacy")
+			run_test (agent tests.test_block_round_trip, "test_block_round_trip")
 
 			print ("%N========================%N")
 			print ("Results: " + passed.out + " passed, " + failed.out + " failed%N")
@@ -135,6 +139,9 @@ feature {NONE} -- Implementation
 			end
 		rescue
 			print ("  FAIL: " + a_name + "%N")
+			if attached (create {EXCEPTION_MANAGER}).last_exception as l_exception and then attached l_exception.description as l_description then
+				print ("        " + l_description.to_string_8 + "%N")
+			end
 			failed := failed + 1
 			l_retried := True
 			retry
