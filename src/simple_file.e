@@ -1021,6 +1021,59 @@ feature -- Streaming Operations (for large files)
 			end
 		end
 
+feature -- Bulk binary I/O (C heap, 64-bit offsets)
+
+	read_block (a_target: MANAGED_POINTER; a_target_offset: INTEGER; a_file_offset: INTEGER_64; a_count: INTEGER): BOOLEAN
+			-- Read `a_count' bytes starting at byte `a_file_offset' of the file into
+			-- `a_target' at `a_target_offset'. One C stdio call into C-heap memory
+			-- (marked `blocking': a long read never stalls another processor's
+			-- collector), 64-bit file offsets (files over 2 GB). False, with
+			-- `last_error', when the file cannot be opened or holds fewer bytes.
+		require
+			non_negative: a_target_offset >= 0 and a_file_offset >= 0 and a_count >= 0
+			fits: a_target_offset + a_count <= a_target.count
+		local
+			l_path: NATIVE_STRING
+			l_read: INTEGER
+		do
+			reset_error
+			create l_path.make (internal_path.name)
+			l_read := os.read_block (l_path.item, a_target.item + a_target_offset, a_file_offset, a_count)
+			Result := l_read = a_count
+			if l_read = -1 then
+				set_error ({STRING_32} "File not readable: " + internal_path.name)
+			elseif l_read = -2 then
+				set_error ({STRING_32} "Cannot seek to byte " + a_file_offset.out + " in " + internal_path.name)
+			elseif not Result then
+				set_error ({STRING_32} "Short read (" + l_read.out + " of " + a_count.out + " bytes) in " + internal_path.name)
+			end
+		ensure
+			error_when_short: not Result implies has_error
+		end
+
+	write_block (a_source: MANAGED_POINTER; a_count: INTEGER; a_append: BOOLEAN): BOOLEAN
+			-- Write the first `a_count' bytes of `a_source' to the file, creating or
+			-- truncating it (or appending when `a_append'). One C stdio call from
+			-- C-heap memory, marked `blocking'. Not crash-safe on its own: for a
+			-- checkpoint, write a temporary name and `rename_to' it.
+		require
+			non_negative: a_count >= 0
+			fits: a_count <= a_source.count
+		local
+			l_path: NATIVE_STRING
+			l_written: INTEGER
+		do
+			reset_error
+			create l_path.make (internal_path.name)
+			l_written := os.write_block (l_path.item, a_source.item, a_count, a_append.to_integer)
+			Result := l_written = a_count
+			if not Result then
+				set_error ({STRING_32} "Short write (" + l_written.out + " of " + a_count.out + " bytes) to " + internal_path.name)
+			end
+		ensure
+			error_when_short: not Result implies has_error
+		end
+
 feature -- Path Transformation
 
 	resolve: STRING_32

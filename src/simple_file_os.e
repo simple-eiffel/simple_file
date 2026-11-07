@@ -205,6 +205,21 @@ feature -- Enumeration
 		deferred
 		end
 
+feature -- Bulk binary I/O (C-heap buffers only)
+
+	read_block (a_path, a_dest: POINTER; a_offset: INTEGER_64; a_count: INTEGER): INTEGER
+			-- Read `a_count' bytes at byte `a_offset' of the file into `a_dest'.
+			-- Bytes read, -1 if the file will not open, -2 if the seek fails.
+		deferred
+		end
+
+	write_block (a_path, a_source: POINTER; a_count, a_append: INTEGER): INTEGER
+			-- Write `a_count' bytes from `a_source', creating or truncating the
+			-- file, or appending when `a_append' is not 0.
+			-- Bytes written, -1 if the file will not open.
+		deferred
+		end
+
 feature -- Process and errors
 
 	current_process_id: NATURAL_32

@@ -288,6 +288,39 @@ feature -- Enumeration
 			"return (EIF_NATURAL_32) ((LPWIN32_FIND_DATAW) $a_data)->dwFileAttributes;"
 		end
 
+feature -- Bulk binary I/O
+
+	read_block (a_path, a_dest: POINTER; a_offset: INTEGER_64; a_count: INTEGER): INTEGER
+			-- <Precursor>
+		external
+			"C blocking inline use <stdio.h>, <wchar.h>"
+		alias
+			"[
+				FILE* f = _wfopen((const wchar_t*)$a_path, L"rb");
+				size_t n;
+				if (f == NULL) return -1;
+				if (_fseeki64(f, (long long)$a_offset, SEEK_SET) != 0) { fclose(f); return -2; }
+				n = fread((char*)$a_dest, 1, (size_t)$a_count, f);
+				fclose(f);
+				return (EIF_INTEGER)n;
+			]"
+		end
+
+	write_block (a_path, a_source: POINTER; a_count, a_append: INTEGER): INTEGER
+			-- <Precursor>
+		external
+			"C blocking inline use <stdio.h>, <wchar.h>"
+		alias
+			"[
+				FILE* f = _wfopen((const wchar_t*)$a_path, $a_append ? L"ab" : L"wb");
+				size_t n;
+				if (f == NULL) return -1;
+				n = fwrite((const char*)$a_source, 1, (size_t)$a_count, f);
+				if (fclose(f) != 0) return -1;
+				return (EIF_INTEGER)n;
+			]"
+		end
+
 feature -- Process and errors
 
 	current_process_id: NATURAL_32

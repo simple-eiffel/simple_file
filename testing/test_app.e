@@ -63,6 +63,7 @@ feature {NONE} -- Initialization
 			run_test (agent tests.test_read_text_utf_8, "test_read_text_utf_8")
 			run_test (agent tests.test_modified_time_100ns, "test_modified_time_100ns")
 			run_test (agent tests.test_listing_matches_legacy, "test_listing_matches_legacy")
+			run_test (agent tests.test_block_round_trip, "test_block_round_trip")
 
 			print ("%N========================%N")
 			print ("Results: " + passed.out + " passed, " + failed.out + " failed%N")
@@ -137,6 +138,9 @@ feature {NONE} -- Implementation
 			end
 		rescue
 			print ("  FAIL: " + a_name + "%N")
+			if attached (create {EXCEPTION_MANAGER}).last_exception as l_exception and then attached l_exception.description as l_description then
+				print ("        " + l_description.to_string_8 + "%N")
+			end
 			failed := failed + 1
 			l_retried := True
 			retry

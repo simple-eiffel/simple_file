@@ -184,6 +184,24 @@ feature -- Enumeration
 			"return (EIF_NATURAL_32) ((sfp_find_data *) $a_data)->attributes;"
 		end
 
+feature -- Bulk binary I/O
+
+	read_block (a_path, a_dest: POINTER; a_offset: INTEGER_64; a_count: INTEGER): INTEGER
+			-- <Precursor>
+		external
+			"C blocking inline use %"simple_file_posix.h%""
+		alias
+			"return (EIF_INTEGER) sfp_read_block ((const char *) $a_path, (void *) $a_dest, (long long) $a_offset, (int) $a_count);"
+		end
+
+	write_block (a_path, a_source: POINTER; a_count, a_append: INTEGER): INTEGER
+			-- <Precursor>
+		external
+			"C blocking inline use %"simple_file_posix.h%""
+		alias
+			"return (EIF_INTEGER) sfp_write_block ((const char *) $a_path, (const void *) $a_source, (int) $a_count, (int) $a_append);"
+		end
+
 feature -- Process and errors
 
 	current_process_id: NATURAL_32

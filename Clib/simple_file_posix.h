@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -279,6 +280,27 @@ static void *sfp_find_first (const char *a_directory, void *a_data, int *a_error
 		return NULL;
 	}
 	return h;
+}
+
+static int sfp_read_block (const char *a_path, void *a_dest, long long a_offset, int a_count)
+{
+	FILE *f = fopen (a_path, "rb");
+	size_t n;
+	if (f == NULL) return -1;
+	if (fseeko (f, (off_t) a_offset, SEEK_SET) != 0) { fclose (f); return -2; }
+	n = fread (a_dest, 1, (size_t) a_count, f);
+	fclose (f);
+	return (int) n;
+}
+
+static int sfp_write_block (const char *a_path, const void *a_source, int a_count, int a_append)
+{
+	FILE *f = fopen (a_path, a_append ? "ab" : "wb");
+	size_t n;
+	if (f == NULL) return -1;
+	n = fwrite (a_source, 1, (size_t) a_count, f);
+	if (fclose (f) != 0) return -1;
+	return (int) n;
 }
 
 static int sfp_is_process_running (unsigned int a_pid)
