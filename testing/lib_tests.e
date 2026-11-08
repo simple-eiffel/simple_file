@@ -732,7 +732,7 @@ feature -- Tests: D13 UTF-8 read, 100 ns time, one-pass listing
 			l_read := l_sf.read_text_utf_8
 			assert_false ("no error", l_sf.has_error)
 			assert_true ("exact round trip incl. CR LF and final LF", l_read.same_string (l_text))
-			assert_integers_equal ("legacy read_text still widens bytes", 2 + 2 + 2 + 4 + 6 + 1 + posix_cr_kept, l_sf.read_text.count)
+			assert_integers_equal ("legacy read_text still widens bytes, CR LF read as LF everywhere", 2 + 2 + 2 + 4 + 6 + 1, l_sf.read_text.count)
 			assert_true ("write_text output", l_sf.write_text ({STRING_32} "a%Nb"))
 			assert_true ("write_text line break", l_sf.read_text_utf_8.same_string (if {PLATFORM}.is_windows then {STRING_32} "a%R%Nb" else {STRING_32} "a%Nb" end))
 			assert_true ("bom file", l_sf.write_bytes ({ARRAY [NATURAL_8]} <<0xEF, 0xBB, 0xBF, 0x41>>))
@@ -890,7 +890,105 @@ feature -- Tests: bulk binary I/O (1.2.0)
 			assert_true ("cleanup", l_sf.delete)
 		end
 
+feature -- Tests: line endings (1.3.0)
+
+	test_read_lines_lf
+			-- LF ends a line.
+		do
+			assert_lines ("LF", {STRING_32} "a%Nb%Nc%N", <<"a", "b", "c">>)
+		end
+
+	test_read_lines_crlf
+			-- CR LF ends a line on every platform, not only where text mode drops the CR.
+		do
+			assert_lines ("CR LF", {STRING_32} "a%R%Nb%R%Nc%R%N", <<"a", "b", "c">>)
+		end
+
+	test_read_lines_lone_cr
+			-- A lone CR (classic Mac) ends a line.
+		do
+			assert_lines ("CR", {STRING_32} "a%Rb%Rc%R", <<"a", "b", "c">>)
+		end
+
+	test_read_lines_mixed
+			-- All three endings in one file, with empty lines between.
+		do
+			assert_lines ("mixed", {STRING_32} "a%Nb%R%Nc%Rd%N%Ne%R%R%Nf", <<"a", "b", "c", "d", "", "e", "", "f">>)
+		end
+
+	test_read_lines_final_line_without_ending
+			-- A last line with no ending is still a line.
+		do
+			assert_lines ("after LF", {STRING_32} "a%Nb", <<"a", "b">>)
+			assert_lines ("after CR LF", {STRING_32} "a%R%Nb", <<"a", "b">>)
+			assert_lines ("after CR", {STRING_32} "a%Rb", <<"a", "b">>)
+			assert_lines ("one line", {STRING_32} "only", <<"only">>)
+		end
+
+	test_line_readers_agree
+			-- each_line, SIMPLE_FILES.read_lines, lines_model and read_text split the same way.
+		local
+			l_sf: SIMPLE_FILE
+			l_files: SIMPLE_FILES
+			l_path: STRING_32
+			l_seen: ARRAYED_LIST [STRING_32]
+			l_ignore: BOOLEAN
+		do
+			l_path := temp_file_path ("line_readers")
+			create l_sf.make (l_path)
+			assert_true ("written", l_sf.write_text_utf_8 ({STRING_32} "a%R%Nb%Rc%Nd"))
+			create l_seen.make (4)
+			l_sf.each_line (agent l_seen.extend)
+			assert_strings_equal ("each_line", "[a][b][c][d]", shown (l_seen))
+			assert_strings_equal ("SIMPLE_FILES.read_lines", "[a][b][c][d]", shown (l_files.read_lines (l_path)))
+			assert_integers_equal ("lines_model count", 4, l_sf.lines_model.count)
+			assert_strings_equal ("lines_model last", "d", l_sf.lines_model [4].to_string_8)
+			assert_strings_equal ("read_text", "[a\nb\nc\nd]", shown (<<l_sf.read_text>>))
+			l_ignore := l_sf.delete
+		end
+
 feature {NONE} -- Test support
+
+	assert_lines (a_tag: STRING; a_bytes: STRING_32; a_expected: ITERABLE [READABLE_STRING_GENERAL])
+			-- `read_lines' of a file holding exactly `a_bytes' gives `a_expected'.
+		local
+			l_sf: SIMPLE_FILE
+			l_ignore: BOOLEAN
+		do
+			create l_sf.make (temp_file_path ("line_endings"))
+			assert_true (a_tag + ": written", l_sf.write_text_utf_8 (a_bytes))
+			assert_strings_equal (a_tag, shown (a_expected), shown (l_sf.read_lines))
+			assert_false (a_tag + ": no error", l_sf.has_error)
+			l_ignore := l_sf.delete
+		end
+
+	shown (a_lines: ITERABLE [READABLE_STRING_GENERAL]): STRING_8
+			-- `a_lines' as "[a][b]", with CR and LF written \r and \n, so a failure reads plainly.
+		local
+			i: INTEGER
+			c: CHARACTER_32
+		do
+			create Result.make (40)
+			across a_lines as ic loop
+				Result.append_character ('[')
+				from
+					i := 1
+				until
+					i > ic.count
+				loop
+					c := ic.item (i)
+					if c = '%R' then
+						Result.append ("\r")
+					elseif c = '%N' then
+						Result.append ("\n")
+					else
+						Result.append_character (c.to_character_8)
+					end
+					i := i + 1
+				end
+				Result.append_character (']')
+			end
+		end
 
 	hex (a_bytes: ARRAY [NATURAL_8]): STRING_8
 			-- "61 0D 0A" style dump of `a_bytes'.
@@ -913,14 +1011,6 @@ feature {NONE} -- Helpers
 				Result := "0D 0A"
 			else
 				Result := "0A"
-			end
-		end
-
-	posix_cr_kept: INTEGER
-			-- 1 where text-mode reads keep a CR, which Windows drops.
-		do
-			if not {PLATFORM}.is_windows then
-				Result := 1
 			end
 		end
 

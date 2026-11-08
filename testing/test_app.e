@@ -65,6 +65,12 @@ feature {NONE} -- Initialization
 			run_test (agent tests.test_modified_time_100ns, "test_modified_time_100ns")
 			run_test (agent tests.test_listing_matches_legacy, "test_listing_matches_legacy")
 			run_test (agent tests.test_block_round_trip, "test_block_round_trip")
+			run_test (agent tests.test_read_lines_lf, "test_read_lines_lf")
+			run_test (agent tests.test_read_lines_crlf, "test_read_lines_crlf")
+			run_test (agent tests.test_read_lines_lone_cr, "test_read_lines_lone_cr")
+			run_test (agent tests.test_read_lines_mixed, "test_read_lines_mixed")
+			run_test (agent tests.test_read_lines_final_line_without_ending, "test_read_lines_final_line_without_ending")
+			run_test (agent tests.test_line_readers_agree, "test_line_readers_agree")
 
 			print ("%N========================%N")
 			print ("Results: " + passed.out + " passed, " + failed.out + " failed%N")
