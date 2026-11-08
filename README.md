@@ -41,6 +41,7 @@ end
 - **Crash-safe writes** - `write_text`, `write_bytes`, `write_lines` replace a file atomically (temp file in the same folder, flush, `MoveFileExW` with write-through): a killed process leaves the old content or the new, never an empty file (0 of 400 kills, 1.1.0)
 - **Every failure reported** - writes return False with `last_error` and the Win32 `last_error_code`; nothing is refused because a folder carries the ReadOnly attribute (as OneDrive folders do)
 - **Safe file names** - `{SIMPLE_FILES}.file_safe_name` turns any text (a verse reference like `John 3:16`, a title with `?` or `"`) into a usable Windows file name; writes refuse a `:` that would land the body in a hidden NTFS stream
+- **Any line ending** - `read_lines`, `each_line` and `read_text` accept LF, CR LF and a lone CR on every platform, and keep a last line that has no ending (1.3.0)
 - **UTF-8 text** - `read_text_utf_8` / `write_text_utf_8` round-trip any text exactly (`read_text` keeps its 1.0 one-character-per-byte behavior)
 - **Directory Management** - List (one `FindFirstFileExW` pass: 100,000 files in about 130 ms), create, delete directories
 - **Streaming Support** - Memory-efficient large file processing
