@@ -2,6 +2,21 @@
 
 All notable changes to simple_file will be documented in this file.
 
+## [1.3.0] - 2026-11-08
+
+### Fixed
+- `read_lines` (`get_lines`, `load_lines`, `lines`), `each_line`, `lines_model` and `read_text` (`content`) now treat LF, CR LF and a lone CR (classic Mac) as line endings on every platform. Before, only LF split lines: on Linux and macOS a file written on Windows kept a CR at the end of every line, and a lone-CR file came back as no lines at all.
+- A last line with no ending was dropped by `read_lines`, `each_line` and `lines_model`; it is now a line.
+- `read_text` turned CR LF into LF only on Windows (the C runtime's text mode); it now does so everywhere, and a lone CR becomes LF too.
+
+### Changed
+- The line readers scan the bytes themselves (`scan_lines`, 64 KiB at a time, still streaming): ISE's `FILE.read_line` drops the CR before a LF on Windows even in binary mode, so CR CR LF lost a line.
+- `read_lines` gained the postcondition `no_line_endings`; `read_text` gained `no_carriage_returns`. `write_lines`' line-count postcondition now applies only when no written line holds a CR or LF itself.
+- Lines stay one CHARACTER_32 per byte, as in 1.0 (decoded text: `read_text_utf_8`, which keeps endings exactly).
+
+### Tests
+- `test_read_lines_lf`, `test_read_lines_crlf`, `test_read_lines_lone_cr`, `test_read_lines_mixed`, `test_read_lines_final_line_without_ending`, `test_line_readers_agree`. `test_read_text_utf_8` no longer expects a kept CR on POSIX.
+
 ## [1.2.0] - 2026-10-25
 
 ### Added

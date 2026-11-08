@@ -110,28 +110,16 @@ feature -- Model Queries (for contracts)
 		end
 
 	lines_model: MML_SEQUENCE [STRING_32]
-			-- Model of file content as sequence of lines.
-			-- Empty if file doesn't exist or isn't readable.
+			-- Model of file content as sequence of lines, split as `read_lines' splits them.
+			-- Empty if file doesn't exist or isn't readable. Leaves `last_error' alone.
 		local
-			l_file: PLAIN_TEXT_FILE
-			l_seq: MML_SEQUENCE [STRING_32]
+			l_lines: ARRAYED_LIST [STRING_32]
 		do
-			create l_seq
-			create l_file.make_with_path (internal_path)
-			if l_file.exists and then l_file.is_readable then
-				l_file.open_read
-				l_file.set_utf8_encoding
-				from
-					l_file.read_line
-				until
-					l_file.exhausted
-				loop
-					l_seq := l_seq & l_file.last_string.to_string_32
-					l_file.read_line
-				end
-				l_file.close
+			create l_lines.make (10)
+			if is_readable then
+				scan_lines (agent l_lines.extend)
 			end
-			Result := l_seq
+			create Result.from_iterable (l_lines)
 		end
 
 	entries_model: MML_SET [STRING_32]
@@ -372,38 +360,25 @@ feature -- Read Operations
 	content: STRING_32
 			-- Read entire file as text, one CHARACTER_32 per byte: the bytes
 			-- are NOT decoded from UTF-8 (a two-byte UTF-8 character comes
-			-- back as two characters), CR LF becomes LF and a final line break
-			-- is dropped. Kept as in 1.0 because clients convert the result
-			-- with `to_string_8' or their own UTF-8 decoder. For decoded text,
-			-- byte-faithful, use `read_text_utf_8'.
+			-- back as two characters). Every line ending (LF, CR LF or a lone
+			-- CR) becomes LF on every platform, and a final line break is
+			-- dropped. Kept byte-wide as in 1.0 because clients convert the
+			-- result with `to_string_8' or their own UTF-8 decoder. For decoded
+			-- text, byte-faithful, use `read_text_utf_8'.
 		local
-			l_file: PLAIN_TEXT_FILE
 			l_first: BOOLEAN
 		do
-			reset_error
 			create Result.make_empty
-			create l_file.make_with_path (internal_path)
-			if l_file.exists and then l_file.is_readable then
-				l_file.open_read
-				l_file.set_utf8_encoding
-				l_first := True
-				from
-				until
-					l_file.exhausted
-				loop
-					l_file.read_line
-					if not l_file.exhausted or else not l_file.last_string.is_empty then
-						if not l_first then
-							Result.append_character ('%N')
-						end
-						l_first := False
-						Result.append_string_general (l_file.last_string)
-					end
+			l_first := True
+			across read_lines as ic loop
+				if not l_first then
+					Result.append_character ('%N')
 				end
-				l_file.close
-			else
-				set_error ({STRING_32} "File not readable: " + internal_path.name)
+				l_first := False
+				Result.append (ic)
 			end
+		ensure
+			no_carriage_returns: not Result.has ('%R')
 		end
 
 	read_text_utf_8: STRING_32
@@ -475,28 +450,15 @@ feature -- Read Operations
 	get_lines,
 	load_lines,
 	lines: ARRAYED_LIST [STRING_32]
-			-- Read all lines.
-		local
-			l_file: PLAIN_TEXT_FILE
+			-- Every line, without its ending. LF, CR LF and a lone CR (classic
+			-- Mac) each end a line on every platform, so a file written on
+			-- Windows reads the same on Linux and macOS; a last line with no
+			-- ending is still a line. One CHARACTER_32 per byte, as in 1.0.
 		do
-			reset_error
 			create Result.make (10)
-			create l_file.make_with_path (internal_path)
-			if l_file.exists and then l_file.is_readable then
-				l_file.open_read
-				l_file.set_utf8_encoding
-				from
-					l_file.read_line
-				until
-					l_file.exhausted
-				loop
-					Result.extend (l_file.last_string.to_string_32)
-					l_file.read_line
-				end
-				l_file.close
-			else
-				set_error ({STRING_32} "File not readable: " + internal_path.name)
-			end
+			each_line (agent Result.extend)
+		ensure
+			no_line_endings: across Result as ic all not ic.has ('%R') and not ic.has ('%N') end
 		end
 
 feature -- Write Operations
@@ -576,7 +538,7 @@ feature -- Write Operations
 			Result := replace_with (text_bytes (l_text, {PLATFORM}.is_windows))
 		ensure
 			success_implies_exists: Result implies exists
-			success_implies_line_count: Result implies lines_model.count = a_lines.count
+			success_implies_line_count: (Result and then across a_lines as ic all not ic.has ('%R') and not ic.has ('%N') end) implies lines_model.count = a_lines.count
 			failure_implies_error: not Result implies has_error
 			path_unchanged: path_model |=| old path_model
 		end
@@ -971,24 +933,12 @@ feature -- Directory Operations
 feature -- Streaming Operations (for large files)
 
 	each_line (a_action: PROCEDURE [STRING_32])
-			-- Iterate lines one at a time (memory efficient).
-		local
-			l_file: PLAIN_TEXT_FILE
+			-- Call `a_action' on each line in turn, without its ending, reading
+			-- one line at a time (memory efficient). Lines end as in `read_lines'.
 		do
 			reset_error
-			create l_file.make_with_path (internal_path)
-			if l_file.exists and then l_file.is_readable then
-				l_file.open_read
-				l_file.set_utf8_encoding
-				from
-					l_file.read_line
-				until
-					l_file.exhausted
-				loop
-					a_action.call ([l_file.last_string.to_string_32])
-					l_file.read_line
-				end
-				l_file.close
+			if is_readable then
+				scan_lines (a_action)
 			else
 				set_error ({STRING_32} "File not readable: " + internal_path.name)
 			end
@@ -1456,6 +1406,62 @@ feature {NONE} -- Implementation
 			end
 		ensure
 			failure_implies_error: not Result implies has_error
+		end
+
+	scan_lines (a_action: PROCEDURE [STRING_32])
+			-- Call `a_action' on each line of the file in turn, without its
+			-- ending, one CHARACTER_32 per byte. LF, CR LF and a lone CR each
+			-- end a line; a last line with no ending is still a line. The bytes
+			-- are scanned here, 64 KiB at a time, because `read_line' cannot be
+			-- trusted with CR: on Windows it drops the CR before a LF even in
+			-- binary mode, so CR CR LF would lose a line.
+		require
+			readable: is_readable
+		local
+			l_file: RAW_FILE
+			l_chunk: STRING_8
+			l_line: STRING_32
+			l_after_cr: BOOLEAN
+			c: CHARACTER_8
+			i: INTEGER
+		do
+			create l_file.make_with_path (internal_path)
+			l_file.open_read
+			create l_line.make (80)
+			from
+			until
+				l_file.end_of_file
+			loop
+				l_file.read_stream (65536)
+				l_chunk := l_file.last_string
+				from
+					i := 1
+				until
+					i > l_chunk.count
+				loop
+					c := l_chunk [i]
+					if c = '%N' then
+						if not l_after_cr then
+							a_action.call ([l_line.twin])
+							l_line.wipe_out
+						end
+							-- after a CR this LF is CR LF's second half: that line already ended
+						l_after_cr := False
+					elseif c = '%R' then
+						a_action.call ([l_line.twin])
+						l_line.wipe_out
+						l_after_cr := True
+					else
+						l_line.append_character (c.to_character_32)
+						l_after_cr := False
+					end
+					i := i + 1
+				end
+			end
+			l_file.close
+			if not l_line.is_empty then
+				a_action.call ([l_line])
+			end
 		end
 
 	raw_bytes (a_failure_prefix: READABLE_STRING_GENERAL): STRING_8
