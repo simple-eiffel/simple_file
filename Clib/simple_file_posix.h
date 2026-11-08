@@ -305,7 +305,7 @@ static int sfp_write_block (const char *a_path, const void *a_source, int a_coun
 
 static int sfp_is_process_running (unsigned int a_pid)
 {
-	/* A process that exists but may not be signalled counts as running. */
+	/* A process that exists but may not be signaled counts as running. */
 	if (kill ((pid_t) a_pid, 0) == 0) return 1;
 	return errno == EPERM;
 }
